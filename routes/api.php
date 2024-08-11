@@ -421,9 +421,10 @@ Route::group(['prefix'=>'v1'],function(){
             Route::get('chartAccount/all', [ChartAccountController::class, 'all']);
 
             Route::resource('chartAccount', ChartAccountController::class);
-            Route::resource('mainjournal', MainJournalController::class);
-            Route::get('mainjournal/lager/{id}', [MainJournalController::class, 'lager']);
             Route::get('mainjournal/trail', [MainJournalController::class, 'trail']);
+            Route::get('mainjournal/lager/{id}', [MainJournalController::class, 'lager']);
+
+            Route::resource('mainjournal', MainJournalController::class);
 
         });
 

@@ -182,6 +182,16 @@ class ChartAccountController extends Controller
             return response()->json(["data" => "no data", "status" => Response::HTTP_NOT_FOUND]);
         }
     }
+    public function showName($id)
+    {
+        $acc = ChartAccount::find($id);
+
+        if ($acc) {
+            return $acc;
+        }
+
+        return null;  
+    }
     public function getDate($id)
     {
         $data = ChartAccount::find($id);

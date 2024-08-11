@@ -60,6 +60,42 @@ class MainJournalController extends Controller
 
         }
     }
+    public function trail(Request $request)  {
+        $validator=Validator::make($request->all(),[
+            'accounts' => 'required|array|min:2',
+            'qc.*.id' => 'required|exists:chart_accounts,id',
+        ]);
+        if($validator->fails()){
+            return response()->json(["error"=>$validator->errors(),"status"=>Response::HTTP_UNPROCESSABLE_ENTITY],200);
+        }
+        else{
+            $validated = $validator->validated();
+
+            $trialBalance = [];
+
+            foreach ($validated["accounts"] as $id) {
+                $credit = MainJournal::where('credit_id', $id)
+                        ->whereIn('debit_id', $validated["accounts"])
+                        ->sum("value");
+                $debit = MainJournal::where('debit_id', $id)
+                        ->whereIn('credit_id', $validated["accounts"])
+                        ->sum("value");
+                $acc_name=$this->ChartAccountController->showName($id);
+                        // dd($acc_name);
+                $trialBalance[] = [
+                    "account_name"=>$acc_name[0]->name,
+                    "debit"=>$debit,
+                    "credit"=>$credit
+                ];
+            }
+
+            // Step 7: Return the trial balance data as a JSON response
+            return response()->json(["trial_balance" => $trialBalance, "status" => Response::HTTP_OK], 200);
+
+            }
+
+        }
+
     public function index()
     {
         $data = MainJournal::orderBy("invoice_id")->get()->groupBy("invoice_group_id");
@@ -107,6 +143,7 @@ class MainJournalController extends Controller
             $validator["invoice_group_id"]=$validator["date"]->year.$validator["date"]->weekOfYear;
             $validator["invoice_id"]=$validator["date"]->year.$validator["date"]->weekOfYear.(MainJournal::where("invoice_group_id",$validator["invoice_group_id"])->count()+1);
             MainJournal::create($validator);
+            //check if parent
             $this->ChartAccountController->GetMainJournalIncress( $validator["credit_id"],$validator["value"]);
             $this->ChartAccountController->GetMainJournalDecress( $validator["debit_id"],$validator["value"]);
             return response()->json(['message' => 'Data created successfully', "status" => Response::HTTP_CREATED]);
