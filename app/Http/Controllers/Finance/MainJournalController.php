@@ -17,53 +17,68 @@ class MainJournalController extends Controller
     {
         $this->ChartAccountController = $ChartAccountController;
     }
-    public function lager($id)  {
-        $data = MainJournal::where("credit_id",$id)->orWhere("debit_id",$id)->orderBy("invoice_id")->get();
-        if (!$data->isEmpty()) {
-            $date=$this->ChartAccountController->getDate($id);
-            if(!$date){
-                return response()->json(["data" => "the record must not be parent of another element", "status" => Response::HTTP_METHOD_NOT_ALLOWED], 200);
-            }
-            $balance=0;
-            $trilbalance=[
-                [
-                    'date' => Carbon::parse($date)->format('Y-m-d'),
-                    'description' => "Balance forward",
-                    'debit' => 0,
-                    'credit' => 0,
-                    'balance' => $balance,
-                ]
-            ];
-            $trilbalance = array_merge($trilbalance, $data->map(function ($items) use ($id, &$balance) {
-                if ($items->debit_id == $id) {
-                    $debit = $items->value;
-                    $credit = 0;
-                    $balance -= $items->value;
-                } else {
-                    $debit = 0;
-                    $credit = $items->value;
-                    $balance += $items->value;
-                }
-                return [
-                    'date' => Carbon::parse($items->date)->format('Y-m-d'),
-                    'description' => $items->description,
-                    'debit' => $debit,
-                    'credit' => $credit,
-                    'balance' => $balance,
-                ];
-            })->toArray());
-            return response()->json(["data" => $trilbalance, "status" => Response::HTTP_OK], 200);
-
+    public function lager(Request $request)  {
+        $validator = Validator::make($request->all(), [
+            'accounts' => 'required|array|min:2',
+            'accounts.*.id' => 'required|exists:chart_accounts,id',
+        ]);
+        if($validator->fails()){
+            return response()->json(["error"=>$validator->errors(),"status"=>Response::HTTP_UNPROCESSABLE_ENTITY],200);
         }
         else{
-            return response()->json(["data" => "No Data", "status" => Response::HTTP_NO_CONTENT], 200);
+            $validator=$validator->validated();
+            $accountgeneral=[];
+            foreach($validator["accounts"] as $id){
+                $data = MainJournal::where("credit_id",$id)->orWhere("debit_id",$id)->orderBy("invoice_id")->get();
+
+                    $date=$this->ChartAccountController->getDate($id);
+                    if(!$date){
+                        return response()->json(["data" => "the record must not be parent of another element", "status" => Response::HTTP_METHOD_NOT_ALLOWED], 200);
+                    }
+                    $balance=0;
+                    $accountgeneral=[
+                        [
+                            'date' => Carbon::parse($date)->format('Y-m-d'),
+                            'description' => "Balance forward",
+                            'debit' => 0,
+                            'credit' => 0,
+                            'balance' => $balance,
+                        ]
+                    ];
+                    $accountgeneral = array_merge($accountgeneral, $data->map(function ($items) use ($id, &$balance) {
+                        if ($items->debit_id == $id) {
+                            $debit = $items->value;
+                            $credit = 0;
+                            $balance -= $items->value;
+                        } else {
+                            $debit = 0;
+                            $credit = $items->value;
+                            $balance += $items->value;
+                        }
+                        return [
+                            'date' => Carbon::parse($items->date)->format('Y-m-d'),
+                            'description' => $items->description,
+                            'debit' => $debit,
+                            'credit' => $credit,
+                            'balance' => $balance,
+                        ];
+                    })->toArray());
+                    $acc_name=$this->ChartAccountController->showName($id);
+                    $generaldata[]=[
+                        "account_name"=>$acc_name[0]->name,
+                        "general_leger"=>$accountgeneral
+                    ];
+
+            }
+            return response()->json(["all_lager" => $generaldata, "status" => Response::HTTP_OK], 200);
+
 
         }
     }
     public function trail(Request $request)  {
-        $validator=Validator::make($request->all(),[
+      $validator = Validator::make($request->all(), [
             'accounts' => 'required|array|min:2',
-            'qc.*.id' => 'required|exists:chart_accounts,id',
+            'accounts.*.id' => 'required|exists:chart_accounts,id',
         ]);
         if($validator->fails()){
             return response()->json(["error"=>$validator->errors(),"status"=>Response::HTTP_UNPROCESSABLE_ENTITY],200);
@@ -72,6 +87,7 @@ class MainJournalController extends Controller
             $validated = $validator->validated();
 
             $trialBalance = [];
+            // dd($validated["accounts"]);
 
             foreach ($validated["accounts"] as $id) {
                 $credit = MainJournal::where('credit_id', $id)
@@ -81,7 +97,6 @@ class MainJournalController extends Controller
                         ->whereIn('credit_id', $validated["accounts"])
                         ->sum("value");
                 $acc_name=$this->ChartAccountController->showName($id);
-                        // dd($acc_name);
                 $trialBalance[] = [
                     "account_name"=>$acc_name[0]->name,
                     "debit"=>$debit,
@@ -89,7 +104,6 @@ class MainJournalController extends Controller
                 ];
             }
 
-            // Step 7: Return the trial balance data as a JSON response
             return response()->json(["trial_balance" => $trialBalance, "status" => Response::HTTP_OK], 200);
 
             }

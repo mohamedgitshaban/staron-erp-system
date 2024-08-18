@@ -168,7 +168,7 @@ class UserController extends Controller
             'Trancportation' => 'required|numeric',
             'kpi' => 'required|numeric',
             'tax' => 'required|numeric',
-            'Supervisor' => 'required|exists:users,id',
+            'Supervisor' => 'nullable|exists:users,id',
             'EmploymentDate' => 'required|date',
             'MedicalInsurance' => 'required|numeric',
             'SocialInsurance' => 'required|numeric',

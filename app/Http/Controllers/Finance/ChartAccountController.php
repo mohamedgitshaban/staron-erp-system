@@ -19,7 +19,7 @@ class ChartAccountController extends Controller
     }
     public function index()
     {
-        $data = ChartAccount::with('childrenRecursive')->whereNull('parent_id')->get();
+        $data = ChartAccount::with('idRecursive')->whereNull('parent_id')->get();
         if (!$data->isEmpty()) {
             $data->transform(function ($account) {
                 unset($account->brance);
@@ -87,12 +87,11 @@ class ChartAccountController extends Controller
             $parent = ChartAccount::where('id', $parentId)->latest()->first();
             $parent->brance = 1;
             $parent->save();
-
-            if (array_key_exists('balance', $validatedData)) {
-                $this->GetBalanceIncress($parent->id, $validatedData["balance"]);
-            } else {
-                return response()->json(['errors' => "you must send balance", "status" => Response::HTTP_UNPROCESSABLE_ENTITY], 200);
-            }
+            // if (array_key_exists('balance', $validatedData)) {
+            //     $this->GetBalanceIncress($parent->id, $validatedData["balance"]);
+            // } else {
+            //     return response()->json(['errors' => "you must send balance", "status" => Response::HTTP_UNPROCESSABLE_ENTITY], 200);
+            // }
             $child = ChartAccount::where('parent_id', $parentId)->latest()->first();
             if ($child == null) {
                 $code = (int)$parent->code .  1;
@@ -103,11 +102,10 @@ class ChartAccountController extends Controller
 
         } else {
             // If no parent_id, just use the count of records
-            $validatedData["balance"] = 0;
             $count = ChartAccount::where('parent_id', $parentId)->count();
             $code = ($count + 1) . "00";
         }
-
+        $validatedData["balance"] = 0;
         // Create the new record with the generated code
         $validatedData['code'] = $code;
         $validatedData['brance'] = 0;
@@ -173,10 +171,9 @@ class ChartAccountController extends Controller
     {
         $data = ChartAccount::with('childrenRecursive')->find($id);
         if ($data != null) {
-            $data->transform(function ($account) {
+
                 unset($account->brance);
-                return $account;
-            });
+
             return response()->json(["data" => $data, "status" => Response::HTTP_OK]);
         } else {
             return response()->json(["data" => "no data", "status" => Response::HTTP_NOT_FOUND]);
@@ -190,23 +187,18 @@ class ChartAccountController extends Controller
             return $acc;
         }
 
-        return null;  
+        return null;
     }
     public function getDate($id)
     {
         $data = ChartAccount::find($id);
-        if ($data != null) {
-            $item=ChartAccount::where("parent_id",$id)->get();
-            if ($item->isEmpty()) {
-                return $data->created_at;
-            }
-            else{
-                return null ;
-            }
-            } else {
-                return null;
-            }
+        if ($data && ChartAccount::where('parent_id', $id)->doesntExist()) {
+            // dd($data[0]->created_at);
+            return $data[0]->created_at;
         }
+        return null;
+    }
+
 
     public function update(Request $request, $id)
     {

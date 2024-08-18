@@ -12,7 +12,7 @@ class ChartAccount extends Model
     protected $fillable = ['name', 'code', 'parent_id',"debit","credit","balance","brance"];
     protected $hidden=["updated_at"];
     protected $casts=[
-        "created_at"=>"datetime:Y-m-d"
+        // "created_at"=>"datetime:Y-m-d"
     ];
     public function parent()
     {
@@ -27,6 +27,10 @@ class ChartAccount extends Model
     {
         return $this->children()->with('childrenRecursive');
     }
+    public function idRecursive()
+    {
+        return $this->children()->with('idRecursive')->select("id","name","parent_id");
+    }
     public function debitAccount():HasMany
     {
         return $this->HasMany(ChartAccount::class, 'debit_id');
@@ -39,5 +43,16 @@ class ChartAccount extends Model
     {
         return $this->HasMany(ChartAccount::class, 'credit_id');
     }
+    public function TresurydebitAccount():HasMany
+    {
+        return $this->HasMany(TresuryAccount::class, 'debit_id');
+    }
 
+    /**
+     * Get the credit account associated with the journal entry.
+     */
+    public function TresurycreditAccount():HasMany
+    {
+        return $this->HasMany(TresuryAccount::class, 'credit_id');
+    }
 }

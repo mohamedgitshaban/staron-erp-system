@@ -35,6 +35,8 @@ use App\Http\Controllers\Technical\CuttingList\CuttingDataController;
 use App\Http\Controllers\Technical\CuttingList\CuttingDataPiecesController;
 use App\Http\Controllers\Technical\CuttingList\CuttingDataRequestController;
 use App\Http\Controllers\Finance\MainJournalController;
+use App\Http\Controllers\Finance\TresuryAccountController;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -416,15 +418,29 @@ Route::group(['prefix'=>'v1'],function(){
                 Route::post('/{id}/AcceptRequestForNoMoney', [FainanceProcurmentController::class,"AcceptRequestForNoMoney"]);
                 Route::post('/{id}/AcceptRequestForMoney', [FainanceProcurmentController::class,"AcceptRequestForMoney"]);
             });
-            Route::get('chartAccount/parent', [ChartAccountController::class, 'parent']);
-            Route::get('chartAccount/child', [ChartAccountController::class, 'child']);
-            Route::get('chartAccount/all', [ChartAccountController::class, 'all']);
 
+            Route::group(['prefix'=>'chartAccount',],function () {
+                Route::get('/parent', [ChartAccountController::class, 'parent']);
+                Route::get('/child', [ChartAccountController::class, 'child']);
+                Route::get('/all', [ChartAccountController::class, 'all']);
+            });
             Route::resource('chartAccount', ChartAccountController::class);
-            Route::get('mainjournal/trail', [MainJournalController::class, 'trail']);
-            Route::get('mainjournal/lager/{id}', [MainJournalController::class, 'lager']);
-
+            Route::group(['prefix'=>'mainjournal',],function () {
+                Route::post('/trail', [MainJournalController::class, 'trail']);
+                Route::post('/lager', [MainJournalController::class, 'lager']);
+            });
             Route::resource('mainjournal', MainJournalController::class);
+
+            Route::group(['prefix'=>'TresuryAccount',],function () {
+                Route::post('/depit', [TresuryAccountController::class, 'getallrequests']);
+                Route::post('/collection', [TresuryAccountController::class, 'getallcollection']);
+                Route::post('/ARcollection', [TresuryAccountController::class, 'getARcollection']);
+                Route::post('/ApRequest', [TresuryAccountController::class, 'getApRequest']);
+                Route::post('/BankChecks', [TresuryAccountController::class, 'getBankChecks']);
+                Route::post('/CashflowHistory', [TresuryAccountController::class, 'getCashflowHistory']);
+                Route::post('/TresuryRequests', [TresuryAccountController::class, 'getTresuryRequests']);
+            });
+            Route::resource('TresuryAccount', TresuryAccountController::class);
 
         });
 
