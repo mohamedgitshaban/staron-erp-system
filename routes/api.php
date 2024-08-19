@@ -432,13 +432,24 @@ Route::group(['prefix'=>'v1'],function(){
             Route::resource('mainjournal', MainJournalController::class);
 
             Route::group(['prefix'=>'TresuryAccount',],function () {
-                Route::post('/depit', [TresuryAccountController::class, 'getallrequests']);
-                Route::post('/collection', [TresuryAccountController::class, 'getallcollection']);
-                Route::post('/ARcollection', [TresuryAccountController::class, 'getARcollection']);
-                Route::post('/ApRequest', [TresuryAccountController::class, 'getApRequest']);
-                Route::post('/BankChecks', [TresuryAccountController::class, 'getBankChecks']);
-                Route::post('/CashflowHistory', [TresuryAccountController::class, 'getCashflowHistory']);
-                Route::post('/TresuryRequests', [TresuryAccountController::class, 'getTresuryRequests']);
+                Route::get('/depit', [TresuryAccountController::class, 'getallrequests']);
+                Route::get('/collection', [TresuryAccountController::class, 'getallcollection']);
+                Route::get('/ARcollection', [TresuryAccountController::class, 'getARcollection']);
+                Route::get('/ApRequest', [TresuryAccountController::class, 'getApRequest']);
+                Route::get('/BankChecks', [TresuryAccountController::class, 'getBankChecks']);
+                Route::get('/CashflowHistory', [TresuryAccountController::class, 'getCashflowHistory']);
+                Route::get('/TresuryRequests', [TresuryAccountController::class, 'getTresuryRequests']);
+                Route::post('/{id}/transfareprogress', [TresuryAccountController::class, 'inprogress']);
+                Route::post('/{id}/bankapprove', [TresuryAccountController::class, 'bankapprove']);
+                Route::post('/{id}/AccountsrepresentativeApprove', [TresuryAccountController::class, 'AccountsrepresentativeApprove']);
+                Route::post('/{id}/tresuryApprove', [TresuryAccountController::class, 'tresuryApprove']);
+                Route::post('/{id}/AccountApprove', [TresuryAccountController::class, 'AccountApprove']);
+                Route::group(['prefix'=>'/{id}/check',],function () {
+                    Route::post('/reject', [TresuryAccountController::class, 'checkreject']);
+                    Route::post('/collect', [TresuryAccountController::class, 'checkcollect']);
+
+                });
+                Route::post('/{id}/cancelled', [TresuryAccountController::class, 'cancelled']);
             });
             Route::resource('TresuryAccount', TresuryAccountController::class);
 

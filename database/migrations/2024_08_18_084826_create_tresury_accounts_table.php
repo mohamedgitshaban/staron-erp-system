@@ -23,6 +23,7 @@ return new class extends Migration
             $table->string('collection_type');
             $table->string('type');
             $table->string("status")->default("pending");
+            $table->date("check_collect")->nullable();
             $table->foreign("debit_id")->references("id")->on("chart_accounts")->onUpdate("cascade")->onDelete("cascade");
             $table->foreign("credit_id")->references("id")->on("chart_accounts")->onUpdate("cascade")->onDelete("cascade");
             $table->timestamps();

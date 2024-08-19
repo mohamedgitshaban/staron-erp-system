@@ -18,6 +18,7 @@ class TresuryAccount extends Model
         'value',
         'collection_date',
         'collection_type',
+        'check_collect',
         'status',
         "type"
     ];
