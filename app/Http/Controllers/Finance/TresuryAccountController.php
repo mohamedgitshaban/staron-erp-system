@@ -112,11 +112,15 @@ class TresuryAccountController extends Controller
 
         }
     }
+    // add bank profile function to when open the bank page to get all (transaction of this bank)
+    public function BankProfile($id){
+        return TresuryAccount::where("credit_id",$id)->orWhere("debit_id",$id)->orderBy("collection_date")->get();
+    }
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(),[
-            'debit_id' => 'required|exists:chart_accounts,id',
-            'credit_id' => 'required|exists:chart_accounts,id',
+            'debit_id' => 'nullable|exists:chart_accounts,id',
+            'credit_id' => 'nullable|exists:chart_accounts,id',
             'description' => 'required|string|max:500',
             'value' => 'required|integer|min:1',
             'type' => 'required|string|max:50|in:income,outcome',
@@ -127,8 +131,26 @@ class TresuryAccountController extends Controller
         }
         else{
             $validator=$validator->validated();
-            $validator["debit_account_description"]=$this->ChartAccountController->GetFullAccountName($validator["debit_id"]);
-            $validator["credit_account_description"]=$this->ChartAccountController->GetFullAccountName($validator["credit_id"]);
+            if($validator["type"]=="income"){// if the request is income so we will git the depit id
+                if(isset($validator["debit_id"])){
+                    $validator["credit_id"]=null;
+                    $validator["debit_account_description"]=$this->ChartAccountController->GetFullAccountName($validator["debit_id"]);
+                }
+                else{
+                    return response()->json(['errors' => "you must send the depit id in the request", "status" => Response::HTTP_UNPROCESSABLE_ENTITY], 200);
+
+                }
+            }
+            else{
+                if(isset($validator["credit_id"])){
+                    $validator["debit_id"]=null;
+                    $validator["credit_account_description"]=$this->ChartAccountController->GetFullAccountName($validator["credit_id"]);
+                }
+                else{
+                    return response()->json(['errors' => "you must send the credit id in the request", "status" => Response::HTTP_UNPROCESSABLE_ENTITY], 200);
+
+                }
+            }
             $validator["status"]="pending";
             TresuryAccount::create($validator);
             return response()->json(['message' => 'Data created successfully', "status" => Response::HTTP_CREATED]);
@@ -137,7 +159,9 @@ class TresuryAccountController extends Controller
     }
     public function inprogress(Request $request,$id){
         $validator = Validator::make($request->all(),[
-            'collection_date' => 'required|date|after:today',
+            'debit_id' => 'nullable|exists:chart_accounts,id',
+            'credit_id' => 'nullable|exists:chart_accounts,id',
+            'collection_date' => 'required|date|after_or_equal:today',
             'check_collect' => 'nullable|date|after_or_equal:collection_date',
             'collection_type' => 'required|string|max:100|in:Bank Transfer,Bank Check,Cash',
         ]);
@@ -149,11 +173,32 @@ class TresuryAccountController extends Controller
             $validator=$validator->validated();
             $data=TresuryAccount::find($id);
             if($data!=null){
+                if($data->type=="outcome"){// if the request is outcome so we will git the depit id
+                    if(isset($validator["debit_id"])){
+                        $validator["debit_account_description"]=$this->ChartAccountController->GetFullAccountName($validator["debit_id"]);
+                    }
+                    else{
+                        return response()->json(['errors' => "you must send the depit id in the request", "status" => Response::HTTP_UNPROCESSABLE_ENTITY], 200);
+
+                    }
+                }
+                else{
+                    if(isset($validator["credit_id"])){
+                        $validator["credit_account_description"]=$this->ChartAccountController->GetFullAccountName($validator["credit_id"]);
+                    }
+                    else{
+                        return response()->json(['errors' => "you must send the credit id in the request", "status" => Response::HTTP_UNPROCESSABLE_ENTITY], 200);
+
+                    }
+                }
                 if ($validator['collection_type'] === 'Bank Check' && is_null($validator['check_collect'])) {
                     return response()->json(['message' => 'Check collect date is required for Bank Check type', "status" => Response::HTTP_UNPROCESSABLE_ENTITY], 200);
                 }
                 if($data->status=="pending"||$data->status=="check reject"){
                     $validator["status"]="in progress";
+                    if($validator['collection_type'] != 'Bank Check'){
+                        $validator['check_collect']=null;
+                    }
                     $data->update($validator);
                     return response()->json(['message' => 'data updated successfully', "status" => Response::HTTP_OK]);
 
@@ -177,7 +222,7 @@ class TresuryAccountController extends Controller
 
                 $validator["status"]="complete";
                 $data->update($validator);
-                $this->MainJournalController->store(new Request($data));
+                $this->MainJournalController->store(new Request($data->toArray()));
                 return response()->json(['message' => 'data updated successfully', "status" => Response::HTTP_OK]);
                 }
                 else{
@@ -236,7 +281,7 @@ class TresuryAccountController extends Controller
             if($data->status=="pending tresury Approve"){
                 $validator["status"]="complete";
                 $data->update($validator);
-                $this->MainJournalController->store(new Request($data));
+                $this->MainJournalController->store(new Request($data->toArray()));
                 return response()->json(['message' => 'data updated successfully', "status" => Response::HTTP_OK]);
 
             }
@@ -258,7 +303,7 @@ class TresuryAccountController extends Controller
             if($data->status=="pending Account Approve"){
                 $validator["status"]="pending check collection";
                 $data->update($validator);
-                $this->MainJournalController->store(new Request($data));
+                // $this->MainJournalController->store(new Request($data));
                 return response()->json(['message' => 'data updated successfully', "status" => Response::HTTP_OK]);
 
             }
@@ -270,7 +315,8 @@ class TresuryAccountController extends Controller
         else{
         return response()->json(["data" => "data not found", "status" => Response::HTTP_NOT_FOUND], 200);
 
-        }
+
+     }
     }
     public function show($id)
     {

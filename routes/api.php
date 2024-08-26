@@ -25,6 +25,7 @@ use App\Http\Controllers\hr\ReqrurmentController;
 use App\Http\Controllers\SupplyChain\CategoryController;
 use App\Http\Controllers\Finance\FainanceProcurmentController;
 use App\Http\Controllers\Control\ControlStocklogController;
+use App\Http\Controllers\Finance\BankController;
 use App\Http\Controllers\hr\AttendanceAssignLogController;
 use App\Http\Controllers\hr\LeavingBalanceLogController;
 use App\Http\Controllers\SupplyChain\StocklogController;
@@ -425,6 +426,8 @@ Route::group(['prefix'=>'v1'],function(){
                 Route::get('/all', [ChartAccountController::class, 'all']);
             });
             Route::resource('chartAccount', ChartAccountController::class);
+            Route::resource('banks', BankController::class);
+
             Route::group(['prefix'=>'mainjournal',],function () {
                 Route::post('/trail', [MainJournalController::class, 'trail']);
                 Route::post('/lager', [MainJournalController::class, 'lager']);

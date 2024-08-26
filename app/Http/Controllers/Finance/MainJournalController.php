@@ -178,7 +178,10 @@ class MainJournalController extends Controller
             return response()->json(["data"=>"no data","status"=>Response::HTTP_NOT_FOUND ]);
         }
     }
-
+    // add bank profile function to when open the bank page to get all mainjournal (transaction of this bank)
+    public function BankProfile($id){
+        return MainJournal::where("credit_id",$id)->orWhere("debit_id",$id)->orderBy("invoice_id")->get();
+    }
     public function update(Request $request, $id)
     {
         $validator=Validator::make($request->all(),[

@@ -19,7 +19,7 @@ class ChartAccountController extends Controller
     }
     public function index()
     {
-        $data = ChartAccount::with('idRecursive')->whereNull('parent_id')->get();
+        $data = ChartAccount::with('childrenRecursive')->whereNull('parent_id')->get();
         if (!$data->isEmpty()) {
             $data->transform(function ($account) {
                 unset($account->brance);
