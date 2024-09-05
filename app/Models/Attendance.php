@@ -35,6 +35,6 @@ class Attendance extends Model
     ];
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class)->select('id', 'name', 'profileimage',"department");
+        return $this->belongsTo(User::class)->select('id', 'name', 'profileimage',"department",'hr_code');
     }
 }

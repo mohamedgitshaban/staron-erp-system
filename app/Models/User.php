@@ -26,7 +26,7 @@ class User extends Authenticatable
         'Trancportation', 'phone', 'EmploymentDate', 'isemploee', 'kpi', 'tax', 'TimeStamp', 'grade', 'segment',
         'startwork', 'endwork', 'clockin', 'clockout', 'last_login', 'email_verified_at', 'remember_token',
         'hraccess', 'salesaccess', 'technicalaccess', 'controlaccess', 'supplychainaccess', 'operationaccess',
-        'financeaccess'
+        'financeaccess','adminstrationaccess'
     ];
 
     /**

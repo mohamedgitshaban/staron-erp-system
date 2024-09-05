@@ -1,18 +1,19 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\adminstration;
+use App\Http\Controllers\Controller;
 
-use App\Models\WeekRecord;
+use App\Models\Rents;
 use Illuminate\Http\Request;
 
-class WeekRecordController extends Controller
+class RentsController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        //
+        
     }
 
     /**
@@ -34,7 +35,7 @@ class WeekRecordController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(WeekRecord $weekRecord)
+    public function show(Rents $rents)
     {
         //
     }
@@ -42,7 +43,7 @@ class WeekRecordController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(WeekRecord $weekRecord)
+    public function edit(Rents $rents)
     {
         //
     }
@@ -50,7 +51,7 @@ class WeekRecordController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, WeekRecord $weekRecord)
+    public function update(Request $request, Rents $rents)
     {
         //
     }
@@ -58,7 +59,7 @@ class WeekRecordController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(WeekRecord $weekRecord)
+    public function destroy(Rents $rents)
     {
         //
     }

@@ -15,7 +15,6 @@ class ChartAccountController extends Controller
     {
         // Apply the middleware to all actions
         $this->middleware('check.role');
-        $this->middleware('check.role');
     }
     public function index()
     {
@@ -165,6 +164,18 @@ class ChartAccountController extends Controller
             return $this->GetFullAccountName($data->parent_id) . "-" .$data->name ;
         } else {
             return $data->name;
+        }
+    }
+    public function allunplanedfees()
+    {
+        $data = ChartAccount::with('childrenRecursive')->find(130);
+        if ($data != null) {
+
+                unset($account->brance);
+
+            return response()->json(["data" => $data, "status" => Response::HTTP_OK]);
+        } else {
+            return response()->json(["data" => "no data", "status" => Response::HTTP_NOT_FOUND]);
         }
     }
     public function show($id)

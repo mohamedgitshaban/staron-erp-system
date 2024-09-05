@@ -1,12 +1,13 @@
 <?php
 
-namespace App\Http\Controllers\Finance;
+namespace App\Http\Controllers\Finance\chartofaccountitem;
 use Illuminate\Support\Facades\Validator;
 use App\Models\ChartAccount;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use App\Http\Controllers\Controller;
-
+use App\Http\Controllers\Finance\MainJournalController;
+use App\Http\Controllers\Finance\TresuryAccountController;
 class BankController extends Controller
 {
     private $TresuryAccountController;

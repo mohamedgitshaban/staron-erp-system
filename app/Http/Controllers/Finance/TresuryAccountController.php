@@ -157,6 +157,29 @@ class TresuryAccountController extends Controller
         }
 
     }
+    public function TresuryReequest(Request $request)
+    {
+        $validator = Validator::make($request->all(),[
+            'debit_id' => 'required|exists:chart_accounts,id',
+            'credit_id' => 'required|exists:chart_accounts,id',
+            'description' => 'required|string|max:500',
+            'value' => 'required|integer|min:1',
+
+        ]);
+        if($validator->fails()){
+            return response()->json(['errors' => $validator->errors(), "status" => Response::HTTP_UNPROCESSABLE_ENTITY], 200);
+
+        }
+        else{
+            $validator=$validator->validated();
+
+            $validator["type"]="outcome";
+            $validator["status"]="pending dismissal notice";
+            TresuryAccount::create($validator);
+            return response()->json(['message' => 'Data created successfully', "status" => Response::HTTP_CREATED]);
+        }
+
+    }
     public function inprogress(Request $request,$id){
         $validator = Validator::make($request->all(),[
             'debit_id' => 'nullable|exists:chart_accounts,id',
@@ -244,7 +267,6 @@ class TresuryAccountController extends Controller
         $data=TresuryAccount::find($id);
         if($data!=null){
             if($data->status=="in progress"){
-                if (Carbon::parse($data->collection_date)->greaterThanOrEqualTo(Carbon::today())){
                     if($data->collection_type=="Cash"){
                         $validator["status"]="pending tresury Approve";
                     }
@@ -258,11 +280,7 @@ class TresuryAccountController extends Controller
                     $data->update($validator);
 
 
-                }
-                else{
-                    return response()->json(['message' => "Method will terminate until {$data->collection_date}", "status" => Response::HTTP_METHOD_NOT_ALLOWED], 200);
 
-                }
 
             }
             else{
@@ -278,7 +296,7 @@ class TresuryAccountController extends Controller
     public function tresuryApprove($id){
         $data=TresuryAccount::find($id);
         if($data!=null){
-            if($data->status=="pending tresury Approve"){
+            if($data->status=="pending tresury Approve"||$data->status=="pending dismissal notice"){
                 $validator["status"]="complete";
                 $data->update($validator);
                 $this->MainJournalController->store(new Request($data->toArray()));

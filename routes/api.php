@@ -1,5 +1,10 @@
 <?php
 
+use App\Http\Controllers\adminstration\FactoryController;
+use App\Http\Controllers\adminstration\MiscelleneousController;
+use App\Http\Controllers\adminstration\SubscliptionController;
+use App\Http\Controllers\adminstration\SuppliesController;
+use App\Http\Controllers\adminstration\UtilitesController;
 use App\Http\Controllers\Finance\ChartAccountController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\hr\AttendanceController;
@@ -25,7 +30,7 @@ use App\Http\Controllers\hr\ReqrurmentController;
 use App\Http\Controllers\SupplyChain\CategoryController;
 use App\Http\Controllers\Finance\FainanceProcurmentController;
 use App\Http\Controllers\Control\ControlStocklogController;
-use App\Http\Controllers\Finance\BankController;
+use App\Http\Controllers\Finance\chartofaccountitem\BankController;
 use App\Http\Controllers\hr\AttendanceAssignLogController;
 use App\Http\Controllers\hr\LeavingBalanceLogController;
 use App\Http\Controllers\SupplyChain\StocklogController;
@@ -80,6 +85,13 @@ Route::group(['prefix'=>'v1'],function(){
                 Route::post('/{id}/update', [ReqrurmentController::class,"update"]);
                 Route::delete('/{id}', [ReqrurmentController::class,"destroy"]);
             });
+        });
+        Route::group(["prefix"=>"adminstration"],function(){
+            Route::resource('factory', FactoryController::class);
+            Route::resource('supplies', SuppliesController::class);
+            Route::resource('utilites', UtilitesController::class);
+            Route::resource('miscelleneous', MiscelleneousController::class);
+            Route::resource('Subscliption', SubscliptionController::class);
         });
         //human Resource
         Route::group(['prefix'=>'humanresource',],function () {
@@ -424,6 +436,8 @@ Route::group(['prefix'=>'v1'],function(){
                 Route::get('/parent', [ChartAccountController::class, 'parent']);
                 Route::get('/child', [ChartAccountController::class, 'child']);
                 Route::get('/all', [ChartAccountController::class, 'all']);
+                Route::get('/allunplanedfees', [ChartAccountController::class, 'allunplanedfees']);
+                Route::get('/allrents', [ChartAccountController::class, 'allrents']);
             });
             Route::resource('chartAccount', ChartAccountController::class);
             Route::resource('banks', BankController::class);
@@ -456,8 +470,9 @@ Route::group(['prefix'=>'v1'],function(){
             });
             Route::resource('TresuryAccount', TresuryAccountController::class);
 
+            Route::group(['prefix'=>'report',],function () {
+                Route::post('/lager', [MainJournalController::class, 'lager']);
+            });
         });
-
-
     });
  });

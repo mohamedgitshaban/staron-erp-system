@@ -158,9 +158,19 @@ class AttendanceImport implements ToCollection
                         $attendance->deduction += 1; // More than three times late
                     }
                 }
+
             if ($attendance->Must_C_Out == 1 && Carbon::parse( $attendance->Clock_Out)->lessThan(Carbon::parse('18:00'))) {
                 $attendance->note .= " early clock out ";
                 $attendance->deduction += 0.5;
+            }
+            if ($row[8]){
+                if($row[8]>0){
+                    $attendance->addetion += $row[8];
+
+                }
+                else{
+                    $attendance->deduction +=  $row[8];
+                }
             }
             if(!$record)
                  {
