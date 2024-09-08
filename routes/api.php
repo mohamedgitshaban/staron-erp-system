@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\adminstration\FactoryController;
+use App\Http\Controllers\adminstration\MaintainanceController;
 use App\Http\Controllers\adminstration\MiscelleneousController;
 use App\Http\Controllers\adminstration\SubscliptionController;
 use App\Http\Controllers\adminstration\SuppliesController;
@@ -89,6 +90,7 @@ Route::group(['prefix'=>'v1'],function(){
         Route::group(["prefix"=>"adminstration"],function(){
             Route::resource('factory', FactoryController::class);
             Route::resource('supplies', SuppliesController::class);
+            Route::resource('maintainance', MaintainanceController::class);
             Route::resource('utilites', UtilitesController::class);
             Route::resource('miscelleneous', MiscelleneousController::class);
             Route::resource('Subscliption', SubscliptionController::class);

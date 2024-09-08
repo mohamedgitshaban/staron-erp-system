@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Operation;
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\Sales\TechnecalRequestController;
+use App\Http\Controllers\Technical\TechnecalRequestController;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
