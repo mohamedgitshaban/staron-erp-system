@@ -24,7 +24,36 @@ class FactoryController extends Controller
 
         }
     }
+    //this function to get all compani's owned factory
+    public function ownedFactory()
+    {
+         $data=Factory::latest()->
+         where("factory_status","active")->
+         where("factory_type","own")->get();
+        if(!$data->isEmpty()){
 
+            return response()->json(["data"=>$data,"status"=>Response::HTTP_OK]);
+        }
+        else{
+            return response()->json(["data"=>"There is No Data","status"=>Response::HTTP_NO_CONTENT ]);
+
+        }
+    }    //this function to get all compani's rents factory
+
+    public function rentsFactory()
+    {
+        $data=Factory::latest()->
+        where("factory_status","active")->
+        where("factory_type","rent")->get();
+        if(!$data->isEmpty()){
+
+            return response()->json(["data"=>$data,"status"=>Response::HTTP_OK]);
+        }
+        else{
+            return response()->json(["data"=>"There is No Data","status"=>Response::HTTP_NO_CONTENT ]);
+
+        }
+    }
 
     public function store(Request $request)
     {

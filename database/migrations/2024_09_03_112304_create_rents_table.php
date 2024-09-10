@@ -13,11 +13,11 @@ return new class extends Migration
     {
         Schema::create('rents', function (Blueprint $table) {
             $table->id();
+            $table->string("name");
             $table->integer("amount");
             $table->enum("status",["pending","paid","delayed","rejected"]);
             $table->date("rent_due_date");
             $table->foreignId('factories_id')->constrained('factories')->onDelete('cascade')->onUpdate('cascade');
-
             $table->timestamps();
         });
     }
