@@ -66,17 +66,8 @@ Route::group(['prefix'=>'v1'],function(){
             Route::post('/updateProfile', [UserController::class,"updateProfile"]);
             Route::get('/getLastLogin', [UserController::class,"getLastLogin"]);
             Route::get('/Attendance', [AttendanceController::class,"PublicAttendance"]);
-            Route::group(['prefix'=>'Requestfe',],function () {
-                Route::post('/create', [EmployeeRFEController::class,"store"]);
-                Route::get('/pending', [EmployeeRFEController::class,"PendingRequest"]);
-                Route::get('/aproved', [EmployeeRFEController::class,"AprovedRequest"]);
-                Route::get('/rejected', [EmployeeRFEController::class,"RejectedRequest"]);
-                Route::get('/', [EmployeeRFEController::class,"index"]);
-                Route::get('/{id}', [EmployeeRFEController::class,"show"])->where('id', '[0-9]+');
-                Route::post('/{id}/update', [EmployeeRFEController::class,"update"]);
-                Route::delete('/{id}', [EmployeeRFEController::class,"destroy"]);
+            Route::resource('Requestfe', EmployeeRFEController::class);
 
-            });
             Route::group(['prefix'=>'Requirements',],function () {
                 Route::get('/', [ReqrurmentController::class,"index"]);
                 Route::post('/create', [ReqrurmentController::class,"store"]);
@@ -126,11 +117,9 @@ Route::group(['prefix'=>'v1'],function(){
 
             });
             Route::group(['prefix'=>'Requestfe',],function () {
-                Route::get('/', [EmployeeRFEController::class,"index"]);
+                Route::get('/', [EmployeeRFEController::class,"HRindex"]);
                 Route::post('/{id}/hrapprove', [EmployeeRFEController::class,"hrapprove"])->where('id', '[0-9]+');
                 Route::post('/{id}/hrreject', [EmployeeRFEController::class,"hrreject"])->where('id', '[0-9]+');
-                Route::post('/{id}/adminapprove', [EmployeeRFEController::class,"adminapprove"])->where('id', '[0-9]+');
-                Route::post('/{id}/adminreject', [EmployeeRFEController::class,"adminreject"])->where('id', '[0-9]+');
             });
             Route::group(['prefix'=>'Requirements',],function () {
                 Route::get('/', [ReqrurmentController::class,"index"]);

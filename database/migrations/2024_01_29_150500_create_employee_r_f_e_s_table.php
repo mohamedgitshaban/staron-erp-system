@@ -13,11 +13,9 @@ return new class extends Migration
     {
         Schema::create('employee_r_f_e_s', function (Blueprint $table) {
             $table->id();
-            $table->string("request_type");
-            $table->string("hr_approve")->default("pending");
-            $table->string("admin_approve")->default("ask");
+            $table->enum("request_type",['Sick Leave', 'Annual Vacation','Absent', 'Errands', 'Clock In Excuse', 'Clock Out Excuse']);
+            $table->enum("hr_approve",["pending","rejected","approved"])->default("pending");
             $table->date("hr_approve_data")->default(now());
-            $table->date("admin_approve_data")->default(now());
             $table->date("from_date");
             $table->date("to_date");
             $table->time("from_ci");

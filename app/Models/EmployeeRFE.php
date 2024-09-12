@@ -10,21 +10,19 @@ class EmployeeRFE extends Model
 {
     use HasFactory;
     protected $fillable = [
+        'id',
         'request_type',
         'hr_approve',
-         'admin_approve',
-          'hr_approve_date',
-        'admin_approve_date',
-         'from_date',
-          'to_date',
-           'from_ci',
-           'to_co',
-            'description',
-            'user_id',
+        'hr_approve_date',
+        'from_date',
+        'to_date',
+        'from_ci',
+        'to_co',
+        'description',
+        'user_id',
     ];
     protected $casts = [
         'hr_approve_date' => 'date',
-        'admin_approve_date' => 'date',
         'from_date' => 'date',
         'to_date' => 'date',
         'from_ci' => 'datetime',
@@ -34,6 +32,6 @@ class EmployeeRFE extends Model
 
     public function user():BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class)->select('name', 'hr_code','department', 'profileimage','id','hraccess');
     }
 }
