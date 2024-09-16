@@ -28,6 +28,18 @@ class EmployeeRFEController extends Controller
 
         $EmployeeRFE = EmployeeRFE::latest()->where("user_id", $this->user->id)->with("user")
             ->get();
+            $EmployeeRFE->transform(function ($item, $key) {
+                if (in_array($item->request_type, ['Sick Leave', 'Annual Vacation', 'Absent'])) {
+                    unset($item->from_ci);
+                    unset($item->to_co);
+                }
+                else{
+                    $item->date=$item->from_date;
+                    unset($item->from_date);
+                    unset($item->to_date);
+                }
+                return $item;
+            });
         if (!$EmployeeRFE->isEmpty()) {
             return response()->json(["data" => $EmployeeRFE, "status" => Response::HTTP_OK], Response::HTTP_OK);
         } else {
@@ -49,20 +61,54 @@ class EmployeeRFEController extends Controller
     {
         $validatedData = Validator::make($request->all(), [
             'request_type' => 'required|string|in:Sick Leave,Annual Vacation,Absent,Errands,Clock In Excuse,Clock Out Excuse',
-            'from_date' => 'required|date|after_or_equal:today',
-            'to_date' => 'required|date|after_or_equal:today',
-            'from_ci' => 'required|date_format:H:i',
-            'to_co' => 'required|date_format:H:i|after:from_ci',
             'description' => 'nullable|string',
         ]);
-        if ($validatedData->fails()) {
-            return response()->json(['errors' => [$validatedData->errors()], "status" => Response::HTTP_UNPROCESSABLE_ENTITY], Response::HTTP_OK);
-        } else {
-            $validatedData = $validatedData->validated();
-            $validatedData["user_id"] = $this->user->id;
-            EmployeeRFE::create($validatedData);
-            return response()->json(["data" => "data added successful", "status" => Response::HTTP_OK], Response::HTTP_OK);
+
+        // Remove 'from_ci' and 'to_co' for Sick Leave, Annual Vacation, Absent
+        if (in_array($request->request_type, ['Sick Leave', 'Annual Vacation', 'Absent'])) {
+            // Validate only from_date and to_date
+            $validatedData->addRules([
+                'from_date' => 'required|date|after_or_equal:today',
+                'to_date' => 'required|date|after_or_equal:today',
+            ]);
         }
+        // Remove 'from_date' and 'to_date' for Errands, Clock In Excuse, Clock Out Excuse
+        if (in_array($request->request_type, ['Errands', 'Clock In Excuse', 'Clock Out Excuse'])) {
+            // Validate only from_ci and to_co
+            $validatedData->addRules([
+                'date' => 'required|date|after_or_equal:today',
+                'from_ci' => 'required|date_format:H:i',
+                'to_co' => 'required|date_format:H:i|after:from_ci',
+            ]);
+        }
+
+        if ($validatedData->fails()) {
+            return response()->json(['errors' => $validatedData->errors(), "status" => Response::HTTP_UNPROCESSABLE_ENTITY], Response::HTTP_OK);
+        }
+
+        // Retrieve the validated data
+        $validatedData = $validatedData->validated();
+
+        // Set 'from_ci' and 'to_co' for Sick Leave, Annual Vacation, Absent
+        if (in_array($validatedData['request_type'], ['Sick Leave', 'Annual Vacation', 'Absent'])) {
+            $validatedData['from_ci'] = $this->user->clockin;
+            $validatedData['to_co'] = $this->user->clockout;
+        }
+
+        // Set 'from_date' and 'to_date' for Errands, Clock In Excuse, Clock Out Excuse
+        if (in_array($validatedData['request_type'], ['Errands', 'Clock In Excuse', 'Clock Out Excuse'])) {
+            $validatedData['from_date'] = $validatedData["date"];
+            $validatedData['to_date'] =  $validatedData["date"];
+        }
+
+        // Add the authenticated user's ID to the validated data
+        $validatedData['user_id'] = $this->user->id;
+
+        // Create the EmployeeRFE record
+        EmployeeRFE::create($validatedData);
+
+        // Return success response
+        return response()->json(["data" => "Data added successfully", "status" => Response::HTTP_OK], Response::HTTP_OK);
     }
 
     /**
@@ -83,12 +129,26 @@ class EmployeeRFEController extends Controller
     {
         $validatedData = Validator::make($request->all(), [
             'request_type' => 'required|string|in:Sick Leave,Annual Vacation,Absent,Errands,Clock In Excuse,Clock Out Excuse',
-            'from_date' => 'required|date|after_or_equal:today',
-            'to_date' => 'required|date|after_or_equal:today',
-            'from_ci' => 'required|date_format:H:i',
-            'to_co' => 'required|date_format:H:i|after:from_ci',
             'description' => 'nullable|string',
         ]);
+
+        // Remove 'from_ci' and 'to_co' for Sick Leave, Annual Vacation, Absent
+        if (in_array($request->request_type, ['Sick Leave', 'Annual Vacation', 'Absent'])) {
+            // Validate only from_date and to_date
+            $validatedData->addRules([
+                'from_date' => 'required|date|after_or_equal:today',
+                'to_date' => 'required|date|after_or_equal:today',
+            ]);
+        }
+        // Remove 'from_date' and 'to_date' for Errands, Clock In Excuse, Clock Out Excuse
+        if (in_array($request->request_type, ['Errands', 'Clock In Excuse', 'Clock Out Excuse'])) {
+            // Validate only from_ci and to_co
+            $validatedData->addRules([
+                'date' => 'required|date|after_or_equal:today',
+                'from_ci' => 'required|date_format:H:i',
+                'to_co' => 'required|date_format:H:i|after:from_ci',
+            ]);
+        }
         if ($validatedData->fails()) {
             return response()->json(['errors' => [$validatedData->errors()], "status" => Response::HTTP_UNPROCESSABLE_ENTITY], Response::HTTP_OK);
         } else {
@@ -96,6 +156,17 @@ class EmployeeRFEController extends Controller
             if ($Request != null) {
                 $validatedData = $validatedData->validated();
                 if ($Request->hr_approve == "pending") {
+                    if (in_array($validatedData['request_type'], ['Sick Leave', 'Annual Vacation', 'Absent'])) {
+                        $validatedData['from_ci'] = $this->user->clockin;
+                        $validatedData['to_co'] = $this->user->clockout;
+                    }
+
+                    // Set 'from_date' and 'to_date' for Errands, Clock In Excuse, Clock Out Excuse
+                    if (in_array($validatedData['request_type'], ['Errands', 'Clock In Excuse', 'Clock Out Excuse'])) {
+                        $validatedData['from_date'] = $validatedData["date"];
+                        $validatedData['to_date'] =  $validatedData["date"];
+                    }
+
                     $Request->update($validatedData);
                     return response()->json(["data" => "data updated successful", "status" => Response::HTTP_OK], Response::HTTP_OK);
                 } else {

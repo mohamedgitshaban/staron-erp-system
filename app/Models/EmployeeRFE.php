@@ -22,11 +22,11 @@ class EmployeeRFE extends Model
         'user_id',
     ];
     protected $casts = [
-        'hr_approve_date' => 'date',
-        'from_date' => 'date',
-        'to_date' => 'date',
-        'from_ci' => 'datetime',
-        'to_co' => 'datetime',
+        'hr_approve_date' => 'date:y-m-d',
+        'from_date' => 'date:y-m-d',
+        'to_date' => 'date:y-m-d',
+        'from_ci' => 'datetime:H:i:s',
+        'to_co' => 'datetime:H:i:s',
     ];
 
 

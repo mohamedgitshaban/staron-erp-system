@@ -149,22 +149,11 @@ Route::group(['prefix'=>'v1'],function(){
                 Route::get('/', [WarningLogController::class,"index"]);
                 Route::get('/{id}/user', [WarningLogController::class,"employeeWarning"]);
                 Route::get('/{id}', [WarningLogController::class,"show"]);
-                Route::put('/{id}/update', [WarningLogController::class,"update"]);
-                Route::delete('/{id}', [WarningLogController::class,"destroy"]);
-                Route::post('/store', [WarningLogController::class,"store"]);
             });
             Route::group(['prefix'=>'leavingbalance',],function () {
                 Route::get('/', [LeavingBalanceLogController::class,"index"]);
-                Route::post('/store', [LeavingBalanceLogController::class,"store"]);
-                Route::put('/{id}/update', [LeavingBalanceLogController::class,"update"]);
                 Route::get('/{id}/user', [LeavingBalanceLogController::class,"showEmployee"])->where('id', '[0-9]+');
                 Route::get('/{id}', [LeavingBalanceLogController::class,"show"])->where('id', '[0-9]+');
-                Route::delete('/{id}', [LeavingBalanceLogController::class,"destroy"])->where('id', '[0-9]+');
-
-            });
-            Route::group(['prefix'=>'target',],function () {
-                Route::get('/assignmentattendance', [AttendanceAssignLogController::class,"selectAll"]);
-
             });
         });
         //sales

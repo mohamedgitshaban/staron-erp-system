@@ -21,12 +21,48 @@ class User extends Authenticatable
      * @var array<int, string>
      */
     protected $fillable = [
-        'name', 'email', 'hr_code', 'date', 'address', 'password', 'salary', 'department', 'profileimage',
-        'job_role', 'job_tybe', 'pdf', 'Supervisor', 'MedicalInsurance', 'VacationBalance', 'SocialInsurance',
-        'Trancportation', 'phone', 'EmploymentDate', 'isemploee', 'kpi', 'tax', 'TimeStamp', 'grade', 'segment',
-        'startwork', 'endwork', 'clockin', 'clockout', 'last_login', 'email_verified_at', 'remember_token',
-        'hraccess', 'salesaccess', 'technicalaccess', 'controlaccess', 'supplychainaccess', 'operationaccess',
-        'financeaccess','adminstrationaccess'
+        'name',
+        'email',
+        'hr_code',
+        'date',
+        'address',
+        'password',
+        'salary',
+        'department',
+        'profileimage',
+        'job_role',
+        'job_tybe',
+        'pdf',
+        'Supervisor',
+        'MedicalInsurance',
+        'VacationBalance',
+        'SocialInsurance',
+        'Trancportation',
+        'overtime',
+        'overtime_value',
+        'phone',
+        'EmploymentDate',
+        'isemploee',
+        'kpi',
+        'tax',
+        'TimeStamp',
+        'grade',
+        'segment',
+        'startwork',
+        'endwork',
+        'clockin',
+        'clockout',
+        'last_login',
+        'email_verified_at',
+        'remember_token',
+        'hraccess',
+        'salesaccess',
+        'technicalaccess',
+        'controlaccess',
+        'supplychainaccess',
+        'operationaccess',
+        'financeaccess',
+        'adminstrationaccess'
     ];
 
     /**
@@ -36,7 +72,7 @@ class User extends Authenticatable
      */
 
     protected $casts = [
-        "email_verified_at"=>"date:y-m-d",
+        "email_verified_at" => "date:y-m-d",
         'date' => 'date',
         'EmploymentDate' => 'date',
         'clockin' => 'datetime:H:i:s',
@@ -44,12 +80,13 @@ class User extends Authenticatable
         'last_login' => 'datetime:H:i',
         'password' => 'hashed',
     ];
-    protected $hidden=[
-        "created_at","updated_at"
+    protected $hidden = [
+        "created_at",
+        "updated_at"
     ];
     public function TechnecalRequest(): HasMany
     {
-        return $this->hasMany(TechnecalRequest::class,"asign_for_user");
+        return $this->hasMany(TechnecalRequest::class, "asign_for_user");
     }
     public function userLogs(): HasMany
     {
@@ -57,7 +94,7 @@ class User extends Authenticatable
     }
     public function supervisor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'Supervisor')->select('id', 'name', 'profileimage','Supervisor','department');;
+        return $this->belongsTo(User::class, 'Supervisor')->select('id', 'name', 'profileimage', 'Supervisor', 'department');;
     }
     public function attendances(): HasMany
     {
@@ -95,21 +132,20 @@ class User extends Authenticatable
     {
         return $this->hasMany(EmployeeRFE::class);
     }
-    public function assignedRequirements():HasMany
+    public function assignedRequirements(): HasMany
     {
         return $this->hasMany(Reqrurment::class);
     }
-    public function assignedClients():HasMany
+    public function assignedClients(): HasMany
     {
         return $this->hasMany(Client::class);
     }
-    public function assignedMeetingLogs():HasMany
+    public function assignedMeetingLogs(): HasMany
     {
         return $this->hasMany(MeetingLog::class);
     }
     public function latestWarningLog(): HasOne
     {
-        return $this->hasOne(WarningLog::class,"userid")->currentMonth()->latestOfMany();
+        return $this->hasOne(WarningLog::class, "userid")->currentMonth()->latestOfMany();
     }
-
 }

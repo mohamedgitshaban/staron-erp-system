@@ -23,10 +23,22 @@ return new class extends Migration
             $table->string('address');
             $table->string('password');
             $table->Integer('salary');
-            $table->string('department');
+            $table->enum('department', [
+                "administration",
+                "Executive",
+                "Human Resources",
+                "Technical Office",
+                "Sales Office",
+                "Operation Office",
+                "Control Office",
+                "Supply Chain",
+                "Markiting",
+                "Research & Development",
+                "Finance"
+            ]);
             $table->string('profileimage');
             $table->string('job_role');
-            $table->string('job_tybe');
+            $table->enum('job_tybe',["Full Time","Part Time"]);
             $table->string('pdf');
             $table->unsignedBigInteger('Supervisor')->nullable();
             $table->integer('MedicalInsurance')->nullable()->default(0);
@@ -34,22 +46,41 @@ return new class extends Migration
             $table->integer('SocialInsurance')->nullable()->default(0);
             $table->integer('Trancportation')->nullable()->default(0);
             $table->string('phone')->nullable();
+            $table->boolean('overtime');
+            $table->float('overtime_value');
+
             $table->date('EmploymentDate')->nullable()->default(now());
             $table->boolean('isemploee')->default(true);
             $table->integer('kpi')->nullable();
             $table->integer('tax')->nullable();
-            $table->string('TimeStamp')->default("office");
-            $table->string('grade')->default("maneger");
-            $table->string('segment')->default("G&A");
-            $table->string('startwork')->default("sunday");
-            $table->string('endwork')->default("tursday");
-            $table->time('clockin')->default("9:00");
-            $table->date('clockout')->default(now());
+            $table->enum('TimeStamp',["Office","Whats App"])->default("Office");
+            $table->enum('grade',["Manager","First Staff","Seconed Staff","Third Staff","Forth Staff"])->default("Manager");
+            $table->enum('segment',["G & A","COR"])->default("G&A");
+            $table->enum('startwork', [
+                'Sunday',
+                'Monday',
+                'Tuesday',
+                'Wednesday',
+                'Thursday',
+                'Friday',
+                'Saturday'
+            ])->default("sunday");
+            $table->enum('endwork', [
+                'Sunday',
+                'Monday',
+                'Tuesday',
+                'Wednesday',
+                'Thursday',
+                'Friday',
+                'Saturday'
+            ])->default("tursday");
+            $table->time('clockin');
+            $table->time('clockout');
             $table->time('last_login')->default("6:00");
             $table->foreign('Supervisor')
-            ->references('id')
-            ->on('users')
-            ->onDelete('set null'); // or you can use 'cascade' or other options based on your requirements
+                ->references('id')
+                ->on('users')
+                ->onDelete('set null'); // or you can use 'cascade' or other options based on your requirements
 
             $table->timestamp('email_verified_at')->nullable();
             $table->rememberToken();
