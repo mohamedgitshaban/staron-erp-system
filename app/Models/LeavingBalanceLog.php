@@ -9,9 +9,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class LeavingBalanceLog extends Model
 {
     use HasFactory;
-    protected $fillable = ['userid','type' ,"count" ,'requestname', 'date', 'text', 'file'];
+    protected $fillable = [
+       'userid',
+        'date',
+        'text',
+        'amount',
+        'type',
+    ];
 
-    public function user(): BelongsTo
+    // Define the relationship with the User model
+    public function user()
     {
         return $this->belongsTo(User::class, 'userid');
     }

@@ -4,7 +4,6 @@ namespace App\Http\Controllers\hr;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\WarningLog;
-use GuzzleHttp\Promise\Create;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Validator ;

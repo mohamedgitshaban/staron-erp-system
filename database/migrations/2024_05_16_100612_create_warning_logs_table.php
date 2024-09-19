@@ -10,10 +10,11 @@ return new class extends Migration
      * Run the migrations.
      */
     public function up(): void
-    {
+    { 
         Schema::create('warning_logs', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('userid')->nullable();
+            $table->string('type');
             $table->integer('level');
             $table->date('date')->nullable()->default(now());
             $table->text('text')->nullable();

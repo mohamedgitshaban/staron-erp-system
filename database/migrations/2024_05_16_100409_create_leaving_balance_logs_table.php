@@ -13,15 +13,15 @@ return new class extends Migration
     {
         Schema::create('leaving_balance_logs', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('userid')->nullable();
-            $table->date('date')->nullable()->default(now());
-            $table->text('text')->nullable();
-            $table->integer('count');
-            $table->string('file')->nullable();
+            $table->unsignedBigInteger('userid');
+            $table->date('date')->nullable();
+            $table->text('text');
+            $table->integer('amount');
+            $table->enum('type',["incress","decress"]);
             $table->foreign('userid')
             ->references('id')
             ->on('users')
-            ->onDelete('set null');
+            ->onDelete('cascade');
             $table->timestamps();
         });
     }

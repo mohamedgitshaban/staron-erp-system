@@ -22,11 +22,12 @@ return new class extends Migration
             $table->boolean('Absent')->nullable();
             $table->time('late')->nullable();
             $table->time('Work_Time')->nullable();
+            $table->unsignedBigInteger("exception")->nullable();
             $table->text('note')->nullable();
-            $table->boolean('Exception')->nullable();
             $table->float('addetion');
             $table->float('deduction');
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+            $table->foreign('exception')->references('id')->on('employee_r_f_e_s')->onDelete('cascade');
             $table->timestamps();
         });
     }

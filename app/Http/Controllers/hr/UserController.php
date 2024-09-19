@@ -334,4 +334,9 @@ class UserController extends Controller
             'last_login' => $user->last_login,
         ]);
     }
+    public function DecressUserLeavingBalance($id,$amount){
+        $data=User::find($id);
+        $data->VacationBalance-=$amount;
+        $data->save();
+    }
 }

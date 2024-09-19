@@ -12,12 +12,16 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\hr\LeavingBalanceLogController;
+use DateTime;
 
 class EmployeeRFEController extends Controller
 {
     protected $user;
-    public function __construct()
+    protected $LeavingBalanceLogController;
+    public function __construct(LeavingBalanceLogController $LeavingBalanceLogController)
     {
+        $this->LeavingBalanceLogController=$LeavingBalanceLogController;
         $this->middleware(function ($request, $next) {
             $this->user = Auth::guard('sanctum')->user(); // Assign authenticated user to $this->user
             return $next($request);
@@ -103,8 +107,18 @@ class EmployeeRFEController extends Controller
 
         // Add the authenticated user's ID to the validated data
         $validatedData['user_id'] = $this->user->id;
+        if($validatedData['request_type']=="Annual Vacation"){
+            $start = new DateTime($validatedData["from_date"]);
+            $end = new DateTime($validatedData["to_date"]);
 
-        // Create the EmployeeRFE record
+            // Use diff to get the difference between the dates
+            $diff = $start->diff($end);
+            // Add 1 to include both start and end date in the count
+            $dayCount = $diff->days + 1;
+            if($this->user->VacationBalance<=$dayCount){
+                return response()->json(["data" => "the Vacation Balance not enough for this request", "status" => Response::HTTP_NOT_ACCEPTABLE], Response::HTTP_OK);
+            }
+        }
         EmployeeRFE::create($validatedData);
 
         // Return success response
@@ -179,13 +193,15 @@ class EmployeeRFEController extends Controller
     }
     public function hrapprove($id)
     {
-
         $Request = EmployeeRFE::find($id);
         if ($Request != null) {
             if ($Request->hr_approve == "pending" && $this->user->hraccess == 1) {
                 $validatedData["hr_approve"] = "approved";
                 $validatedData["hr_approve_data"] = now();
                 $Request->update($validatedData);
+                if($Request->request_type=="Annual Vacation"){
+                    $this->LeavingBalanceLogController->LeavingBalanceDeductionRequest($Request);
+                }
                 return response()->json(["data" => "data updated successful", "status" => 200]);
             } else {
                 return response()->json(["data" => "method not allowed", "status" => Response::HTTP_METHOD_NOT_ALLOWED], Response::HTTP_OK);
