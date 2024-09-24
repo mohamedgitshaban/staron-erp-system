@@ -13,6 +13,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
 use Maatwebsite\Excel\Facades\Excel;
+use ZipArchive;
 
 class UserController extends Controller
 {
@@ -129,14 +130,30 @@ class UserController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'file' => 'required|mimes:xlsx,xls|max:10240',
+            'profileimages' => 'required|mimes:zip|max:10240',
+            'documents' => 'required|mimes:zip|max:10240',
         ]);
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors(),"status"=>Response::HTTP_UNPROCESSABLE_ENTITY],200 );
         }
 
         $validator=$validator->validated();
+        //upload all user data from excel to data base
         Excel::import(new UsersImport, $validator["file"]);
-        // $this->AttendanceAssignLogController->store();
+        //upload all user document in storage
+        $documents = new ZipArchive();
+        //cheack if i can open the zip file
+        if($documents->open($validator["documents"])===TRUE){
+            $documents->extractTo("uploads");
+            $documents->close();
+        }
+        //upload all user images in storage
+        $profileimages = new ZipArchive();
+        //cheack if i can open the zip file
+        if($profileimages->open($validator["profileimages"])===TRUE){
+            $profileimages->extractTo("uploads");
+            $profileimages->close();
+        }
         return response()->json(['message' => "create success","status"=> Response::HTTP_OK],200);
 
     }
