@@ -97,6 +97,7 @@ Route::group(['prefix'=>'v1'],function(){
         Route::group(['prefix'=>'humanresource',],function () {
             Route::group(['prefix'=>'employee',],function () {
                 Route::get('/', [UserController::class,"index"]);
+                Route::post('/excelupload', [UserController::class,"ExcelUpload"]);
                 Route::post('/superVisor', [UserController::class,"AllSuperVisor"]);
                 Route::get('/department', [UserController::class,"department"]);
                 Route::get('/{id}', [UserController::class,"show"])->where('id', '[0-9]+');
@@ -116,6 +117,7 @@ Route::group(['prefix'=>'v1'],function(){
                 Route::post('/{id}/deduction', [AttendanceController::class,"deduction"])->where('id', '[0-9]+');
 
             });
+            //for approve any request from any user
             Route::group(['prefix'=>'Requestfe',],function () {
                 Route::get('/', [EmployeeRFEController::class,"HRindex"]);
                 Route::post('/{id}/hrapprove', [EmployeeRFEController::class,"hrapprove"])->where('id', '[0-9]+');
@@ -272,8 +274,6 @@ Route::group(['prefix'=>'v1'],function(){
                 Route::post('/{id}/update', [MonthInvoiceController::class,"update"]);
                 Route::get('/{id}', [MonthInvoiceController::class,"show"])->where('id', '[0-9]+');
                 Route::delete('/{id}', [MonthInvoiceController::class,"destroy"]);
-
-
             });
             Route::group(['prefix'=>'operationplan',],function () {
                 Route::get('/', [ControlOperationPlanController::class,"index"]);
@@ -306,7 +306,6 @@ Route::group(['prefix'=>'v1'],function(){
 
             // });
             Route::group(['prefix'=>'warehouse',],function () {
-
                     Route::get('/', [ControlStocklogController::class,"index"]);
                     Route::get('/StockLog', [ControlStocklogController::class,"StockLog"]);
                     Route::post('/create', [ControlStocklogController::class,"store"]);

@@ -15,9 +15,9 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('user_id');
             $table->date('Date');
-            $table->Integer('workdays');
+            $table->Integer('workdays');// available working day
             $table->Integer('holidays');
-            $table->Integer('attendance');
+            $table->Integer('attendance'); // actual working days
             $table->float('excuses');
             $table->float('additions');
             $table->float('deductions');
@@ -26,8 +26,8 @@ return new class extends Migration
             $table->float('SocialInsurance');
             $table->float('MedicalInsurance');
             $table->float('tax');
-            $table->float('TotalPay');
-            $table->float('TotalLiquidPay');
+            $table->float('TotalPay');// gross salary
+            $table->float('TotalLiquidPay');//net salary
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
             $table->timestamps();
         });

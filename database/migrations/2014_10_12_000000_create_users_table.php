@@ -55,7 +55,7 @@ return new class extends Migration
             $table->integer('tax')->nullable();
             $table->enum('TimeStamp',["Office","Whats App"])->default("Office");
             $table->enum('grade',["Manager","First Staff","Seconed Staff","Third Staff","Forth Staff"])->default("Manager");
-            $table->enum('segment',["G & A","COR"])->default("G&A");
+            $table->enum('segment',["G & A","COR"])->default("G & A");
             $table->enum('startwork', [
                 'Sunday',
                 'Monday',

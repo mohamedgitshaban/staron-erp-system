@@ -4,6 +4,7 @@ namespace App\Http\Controllers\hr;
 
 use App\Models\User;
 use App\Http\Controllers\Controller;
+use App\Imports\UsersImport;
 use App\Rules\Weekday;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -11,6 +12,7 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
+use Maatwebsite\Excel\Facades\Excel;
 
 class UserController extends Controller
 {
@@ -122,6 +124,21 @@ class UserController extends Controller
 
             return response()->json(['message' => 'User created successfully', "status" => Response::HTTP_OK]);
         }
+    }
+    public function ExcelUpload(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'file' => 'required|mimes:xlsx,xls|max:10240',
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors(),"status"=>Response::HTTP_UNPROCESSABLE_ENTITY],200 );
+        }
+
+        $validator=$validator->validated();
+        Excel::import(new UsersImport, $validator["file"]);
+        // $this->AttendanceAssignLogController->store();
+        return response()->json(['message' => "create success","status"=> Response::HTTP_OK],200);
+
     }
     public function show($id)
     {
