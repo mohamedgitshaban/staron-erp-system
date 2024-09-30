@@ -4,6 +4,7 @@ namespace App\Imports;
 
 use App\Models\Attendance;
 use App\Models\Complains;
+use App\Models\EmployeeRFE;
 use App\Models\User;
 use Carbon\Carbon;
 
@@ -34,34 +35,33 @@ class AttendanceImport implements ToCollection
                 $attendance->addetion = 0;
                 $attendance->note = "";
                 $attendance->deduction =  0;
-                // date
-                if (is_numeric($row[3])) {
-                    // Convert the fractional value to a timestamp
-                    $timestamp = ($row[3] - 25569) * 86400; // Convert Excel date to Unix timestamp
-
-                    $attendance->date = Carbon::createFromTimestamp($timestamp)->format('Y-m-d');
-                } else {
-                    $attendance->date = Carbon::createFromFormat('m/d/Y', $row[3])->format('Y-m-d');
-                }
+                // get the formated attendance date
+                $attendance->date =  is_numeric($row[3]) ? Carbon::createFromTimestamp(($row[3] - 25569) * 86400)->format('Y-m-d') : Carbon::createFromFormat('m/d/Y', $row[3])->format('Y-m-d');
                 $record = Attendance::where("user_id", $user->id)->where("date", $attendance->date)->first();
+                $attendance->absent = filter_var($row[7], FILTER_VALIDATE_BOOLEAN);
 
                 // attend or not
-                if (filter_var($row[7], FILTER_VALIDATE_BOOLEAN)) {
+                if ($attendance->absent) {
+                    $excusecheck = EmployeeRFE::where("user_id", $user->id)->where("hr_approve", "approved")->whereBetween($attendance->date, ['from_date', 'to_date'])->whereIn('request_type', ['Sick Leave', 'Annual Vacation', 'Absent'])->first();
                     $attendance->Clock_In = Carbon::createFromFormat('H:i', $time)->format('H:i');
                     $attendance->Clock_Out = Carbon::createFromFormat('H:i', $timelogout)->format('H:i');
                     $attendance->Work_Time = Carbon::createFromFormat('H:i', $time)->format('H:i');
-                    $today = Carbon::now()->dayOfWeek;
-
-                    // Check if today is Thursday (4) or Sunday (0)
-                    if ($today == Carbon::THURSDAY || $today == Carbon::SUNDAY) {
-                        $attendance->deduction += 2;
+                    if ($excusecheck) {
+                        $attendance->exception = $excusecheck->id;
+                        if ($excusecheck->request_type == 'Absent') {
+                            $attendance->deduction += 1;
+                        }
                     } else {
-                        $attendance->deduction += 1;
-                    }
-                    $attendance->note .= "Absent";
-                } else {
-                    $attendance->absent = filter_var($row[7], FILTER_VALIDATE_BOOLEAN);
+                        $today = Carbon::now()->dayOfWeek;
 
+                        // Check if today is Thursday (4) or Sunday (0)
+                        if ($today == Carbon::THURSDAY || $today == Carbon::SUNDAY) {
+                            $attendance->deduction += 2;
+                        } else {
+                            $attendance->deduction += 1;
+                        }
+                    }
+                } else {
                     if ($row[4]) {
                         $attendance->Must_C_In = 1;
                         if (is_numeric($row[4])) {
@@ -91,7 +91,6 @@ class AttendanceImport implements ToCollection
                         $attendance->note .= " Not clock in ";
                         $attendance->Clock_In = Carbon::createFromFormat('H:i', $time)->format('H:i');
                     }
-
                     if ($row[5]) {
                         $attendance->Must_C_Out = 1;
                         if (is_numeric($row[5])) {
@@ -116,46 +115,42 @@ class AttendanceImport implements ToCollection
                         $attendance->note .= " Not clock out ";
                         $attendance->Clock_Out = Carbon::createFromFormat('H:i', $timelogout)->format('H:i');
                     }
-                    $attendance->Work_Time = Carbon::parse($attendance->Clock_In)->diff(Carbon::parse($attendance->Clock_Out))->format('%H:%i');
-                }
-                //late
-                // dd(Carbon::createFromFormat('H:i', $attendance->Clock_In)->greaterThan(Carbon::createFromFormat('H:i', '09:30')));
-                if ($row[4] && Carbon::parse('09:10')->lessThan(Carbon::parse($attendance->Clock_In))) {
-                    $attendance->note .= " late on clock in ";
-                    $startOfMonth = Carbon::createFromFormat('Y-m-d', $attendance->date)->startOfMonth()->subMonth()->day(26)->format('Y-m-d');
-                    // Count all attendance records for this user of this month where Clock_In is after 9:30
-                    $lateCount = Attendance::where('user_id', $user->id)
-                        ->whereBetween('date', [$startOfMonth, $attendance->date])
-                        ->where('Clock_In', '>', '09:10')
-                        ->count();
 
-                    // dd($lateFormatted);
-                    if ($lateCount == 0) {
-                        $attendance->deduction += 0; // First time late, no deduction
-                    } elseif ($lateCount == 1) {
-                        $attendance->deduction += 0.25; // Second time late
-                    } elseif ($lateCount == 2) {
-                        $attendance->deduction += 0.5; // Third time late
-                    } else {
-                        $attendance->deduction += 1; // More than three times late
+                    if ($row[4] && Carbon::parse('09:10')->lessThan(Carbon::parse($attendance->Clock_In))) {
+                        $attendance->note .= " late on clock in ";
+                        $startOfMonth = Carbon::createFromFormat('Y-m-d', $attendance->date)->startOfMonth()->subMonth()->day(26)->format('Y-m-d');
+                        // Count all attendance records for this user of this month where Clock_In is after 9:30
+                        $lateCount = Attendance::where('user_id', $user->id)
+                            ->whereBetween('date', [$startOfMonth, $attendance->date])
+                            ->where('Clock_In', '>', '09:10')
+                            ->count();
+                        if ($lateCount == 0) {
+                            $attendance->deduction += 0; // First time late, no deduction
+                        } elseif ($lateCount == 1) {
+                            $attendance->deduction += 0.25; // Second time late
+                        } elseif ($lateCount == 2) {
+                            $attendance->deduction += 0.5; // Third time late
+                        } else {
+                            $attendance->deduction += 1; // More than three times late
+                        }
                     }
-                }
 
-                if ($attendance->Must_C_Out == 1 && Carbon::parse($attendance->Clock_Out)->lessThan(Carbon::parse('18:00'))) {
-                    $attendance->note .= " early clock out ";
-                    $attendance->deduction += 0.5;
-                }
-                if ($row[8]) {
-                    if ($row[8] > 0) {
-                        $attendance->addetion += $row[8];
-                    } else {
-                        $attendance->deduction +=  $row[8];
+                    if ($attendance->Must_C_Out == 1 && Carbon::parse($attendance->Clock_Out)->lessThan(Carbon::parse('18:00'))) {
+                        $attendance->note .= " early clock out ";
+                        $attendance->deduction += 0.5;
                     }
-                }
-                if (!$record) {
-                    $attendance->save();
-                } else {
-                    $record->update((array)$attendance);
+                    if ($row[8]) {
+                        if ($row[8] > 0) {
+                            $attendance->addetion += $row[8];
+                        } else {
+                            $attendance->deduction +=  $row[8];
+                        }
+                    }
+                    if (!$record) {
+                        $attendance->save();
+                    } else {
+                        $record->update((array)$attendance);
+                    }
                 }
             }
         }
