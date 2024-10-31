@@ -50,6 +50,9 @@ class TresuryAccountController extends Controller
 
         }
     }
+
+
+
     public function getARcollection()
     {
         $data = TresuryAccount::latest()
@@ -459,4 +462,24 @@ class TresuryAccountController extends Controller
 
         }
     }
+
+       public function partialPayment(Request $request) {
+        $validator = Validator::make($request->all(),[
+            'debit_id' =>  'required|exists:chart_accounts,id',
+            'credit_id' => 'required|exists:chart_accounts,id',
+            'value' => 'required|integer|min:1',
+            'type' => 'required|string|max:50|in:income,outcome',
+        ]);
+        if($validator->fails()){
+            return response()->json(['errors' => $validator->errors(), "status" => Response::HTTP_UNPROCESSABLE_ENTITY], 200);
+        }
+        else {
+            $validator = $validator->validated();
+            return response()->json(['data'=>$validator , "status"=>Response::HTTP_OK],200);
+        }
+
+    }
+
 }
+
+

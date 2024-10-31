@@ -16,7 +16,7 @@ return new class extends Migration
             $table->unsignedBigInteger('qc_applecations_id');
             $table->string("stockid");
             // $table->unsignedBigInteger("stockid");
-            $table->text("description")->default("");
+            $table->text("description"); // removed the -> default("");
             $table->integer("price")->default(0);
             $table->float("quantity")->default();
             // $table->foreign('stockid')->references('id')->on('stocks')->onDelete('cascade');

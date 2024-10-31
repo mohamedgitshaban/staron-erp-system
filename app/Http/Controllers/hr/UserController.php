@@ -126,6 +126,7 @@ class UserController extends Controller
             return response()->json(['message' => 'User created successfully', "status" => Response::HTTP_OK]);
         }
     }
+
     public function ExcelUpload(Request $request)
     {
         $validator = Validator::make($request->all(), [

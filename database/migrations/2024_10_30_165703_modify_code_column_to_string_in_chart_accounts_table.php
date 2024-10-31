@@ -11,13 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('chart_accounts', function (Blueprint $table) {
-            $table->id();
-            $table->string("name");
-            $table->integer("code");
-
-            $table->foreignId('parent_id')->nullable()->constrained('chart_accounts')->onDelete('cascade');
-            $table->timestamps();
+        Schema::table('chart_accounts', function (Blueprint $table) {
+            $table->string('code',255)->change();
         });
     }
 
@@ -26,6 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('chart_accounts');
+        Schema::table('chart_accounts', function (Blueprint $table) {
+            $table->integer('code')->change();  // Revert 'code' back to integer if needed
+        });
     }
 };

@@ -11,13 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('chart_accounts', function (Blueprint $table) {
-            $table->id();
-            $table->string("name");
-            $table->integer("code");
-
-            $table->foreignId('parent_id')->nullable()->constrained('chart_accounts')->onDelete('cascade');
-            $table->timestamps();
+        Schema::table('chart_account_validations', function (Blueprint $table) {
+            $table->json('hierarchy')->nullable()->change();
         });
     }
 
@@ -26,6 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('chart_accounts');
+        Schema::table('chart_account_validations', function (Blueprint $table) {
+            $table->text('hierarchy')->nullable()->change();
+        });
     }
 };

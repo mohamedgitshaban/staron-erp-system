@@ -7,6 +7,7 @@ use App\Http\Controllers\adminstration\RentsController;
 use App\Http\Controllers\adminstration\SubscliptionController;
 use App\Http\Controllers\adminstration\SuppliesController;
 use App\Http\Controllers\adminstration\UtilitesController;
+use App\Http\Controllers\ChartAccountValidationController;
 use App\Http\Controllers\Finance\ChartAccountController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\hr\AttendanceController;
@@ -44,6 +45,7 @@ use App\Http\Controllers\Technical\CuttingList\CuttingDataPiecesController;
 use App\Http\Controllers\Technical\CuttingList\CuttingDataRequestController;
 use App\Http\Controllers\Finance\MainJournalController;
 use App\Http\Controllers\Finance\TresuryAccountController;
+use App\Http\Controllers\MainJournalValidationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -97,13 +99,18 @@ Route::group(['prefix'=>'v1'],function(){
         Route::group(['prefix'=>'humanresource',],function () {
             Route::group(['prefix'=>'employee',],function () {
                 Route::get('/', [UserController::class,"index"]);
-                Route::post('/excelupload', [UserController::class,"ExcelUpload"]);
                 Route::post('/superVisor', [UserController::class,"AllSuperVisor"]);
                 Route::get('/department', [UserController::class,"department"]);
                 Route::get('/{id}', [UserController::class,"show"])->where('id', '[0-9]+');
                 Route::post('/create', [UserController::class,"create"]);
                 Route::delete('/{id}', [UserController::class,"destroy"])->where('id', '[0-9]+');
                 Route::post('/{id}/update', [UserController::class,"update"])->where('id', '[0-9]+');
+                Route::get('/{id}/age',[UserController::class, 'age']);
+                Route::post('/dept_count',[UserController::class,'employeeInDept']);
+                Route::post('/employee_with_role',[UserController::class,'getEmployeesByRole']);
+                Route::post('/users-by-range', [UserController::class,'getUsersByAgeRange']);
+
+
             });
             Route::group(['prefix'=>'attendance',],function () {
                 Route::get('/', [AttendanceController::class,"index"]);
@@ -116,8 +123,8 @@ Route::group(['prefix'=>'v1'],function(){
                 Route::post('/{id}/addetion', [AttendanceController::class,"addetion"])->where('id', '[0-9]+');
                 Route::post('/{id}/deduction', [AttendanceController::class,"deduction"])->where('id', '[0-9]+');
 
+
             });
-            //for approve any request from any user
             Route::group(['prefix'=>'Requestfe',],function () {
                 Route::get('/', [EmployeeRFEController::class,"HRindex"]);
                 Route::post('/{id}/hrapprove', [EmployeeRFEController::class,"hrapprove"])->where('id', '[0-9]+');
@@ -274,6 +281,8 @@ Route::group(['prefix'=>'v1'],function(){
                 Route::post('/{id}/update', [MonthInvoiceController::class,"update"]);
                 Route::get('/{id}', [MonthInvoiceController::class,"show"])->where('id', '[0-9]+');
                 Route::delete('/{id}', [MonthInvoiceController::class,"destroy"]);
+
+
             });
             Route::group(['prefix'=>'operationplan',],function () {
                 Route::get('/', [ControlOperationPlanController::class,"index"]);
@@ -306,6 +315,7 @@ Route::group(['prefix'=>'v1'],function(){
 
             // });
             Route::group(['prefix'=>'warehouse',],function () {
+
                     Route::get('/', [ControlStocklogController::class,"index"]);
                     Route::get('/StockLog', [ControlStocklogController::class,"StockLog"]);
                     Route::post('/create', [ControlStocklogController::class,"store"]);
@@ -403,6 +413,7 @@ Route::group(['prefix'=>'v1'],function(){
                 Route::get('/{id}', [FinanceReportSubmitionController::class,"show"])->where('id', '[0-9]+');
                 Route::delete('/{id}', [FinanceReportSubmitionController::class,"destroy"]);
                 Route::post('/{id}/update', [FinanceReportSubmitionController::class,"update"]);
+
             });
             Route::group(['prefix'=>'ActualCollection',],function () {
                 Route::get('/', [FinanceActualCollectionController::class,"index"]);
@@ -418,19 +429,48 @@ Route::group(['prefix'=>'v1'],function(){
                 Route::post('/{id}/AcceptRequestForMoney', [FainanceProcurmentController::class,"AcceptRequestForMoney"]);
             });
 
-            Route::group(['prefix'=>'chartAccount',],function () {
-                Route::get('/parent', [ChartAccountController::class, 'parent']);
-                Route::get('/child', [ChartAccountController::class, 'child']);
-                Route::get('/all', [ChartAccountController::class, 'all']);
-                Route::get('/allunplanedfees', [ChartAccountController::class, 'allunplanedfees']);
-                Route::get('/allrents', [ChartAccountController::class, 'allrents']);
+            Route::group(['prefix' => "chartAccountValidation"], function () {
+                Route::post('/store', [ChartAccountValidationController::class, 'store']); // Submit account creation request
+                Route::post('/approve/{id}', [ChartAccountValidationController::class, 'approve']); // Approve a validation request
+                Route::post('/reject/{id}', [ChartAccountValidationController::class, 'reject']); // Reject a validation request
+                Route::get('/pending', [ChartAccountValidationController::class, 'index']); // List all pending requests
+                Route::get('/show/{id}', [ChartAccountValidationController::class, 'show']); // View a specific request
             });
-            Route::resource('chartAccount', ChartAccountController::class);
+
+            Route::group(['prefix' => 'chartAccount'], function () {
+                Route::get('/',[ChartAccountController::class, 'index']);
+                Route::get('/parent', [ChartAccountController::class, 'parent']); // Get parent accounts
+                Route::get('/child', [ChartAccountController::class, 'child']); // Get child accounts
+                Route::get('/all', [ChartAccountController::class, 'all']); // Get all accounts
+                Route::get('/leafaccounts', [ChartAccountController::class, 'getLeafAccounts']); // Get accounts without children
+                Route::get('/totalparentbalance', [ChartAccountController::class, 'totalParentAccountsBalance']); // Total balance of parent accounts
+
+                Route::post('/findsiblingaccounts', [ChartAccountController::class, 'findSiblingAccounts']); // Find sibling accounts for a specific account
+
+                // Account management
+                Route::post('/create', [ChartAccountController::class, 'store']); // Directly create an account in ChartAccount (if validation bypassed)
+                Route::post('/update/{id}', [ChartAccountController::class, 'update']); // Update an account's details
+                Route::delete('/delete/{id}', [ChartAccountController::class, 'destroy']); // Delete an account
+
+                // Route for getting specific account details
+                Route::get('/show/{id}', [ChartAccountController::class, 'show']); // Get account details with nested children
+                Route::get('/fullname/{id}', [ChartAccountController::class, 'GetFullAccountName']); // Get full name/path for an account
+            });
+
+            // this is no use currently
+            // Route::resource('chartAccount', ChartAccountController::class);
             Route::resource('banks', BankController::class);
+
+
 
             Route::group(['prefix'=>'mainjournal',],function () {
                 Route::post('/trail', [MainJournalController::class, 'trail']);
                 Route::post('/lager', [MainJournalController::class, 'lager']);
+
+                Route::post('/validateJournalEntry', [MainJournalValidationController::class, 'validateEntry']);
+                Route::post('/approveJournalEntry', [MainJournalValidationController::class, 'approveEntry']);
+                Route::post('/rejectJournalEntry', [MainJournalValidationController::class, 'rejectEntry']);
+
             });
             Route::resource('mainjournal', MainJournalController::class);
 
@@ -453,6 +493,8 @@ Route::group(['prefix'=>'v1'],function(){
 
                 });
                 Route::post('/{id}/cancelled', [TresuryAccountController::class, 'cancelled']);
+                Route::post('/partial_payment',[TresuryAccountController::class, 'partialPayment']);
+
             });
             Route::resource('TresuryAccount', TresuryAccountController::class);
 
