@@ -18,10 +18,22 @@ class ChartAccountValidationController extends Controller
     {
         $pendingRequests = ChartAccountValidation::where('status', 'pending')->get();
 
+        // Use the `map()` method to modify the collection directly
+        $pendingRequestsWithImageUri = $pendingRequests->map(function ($item) {
+            $user = User::find($item->requested_by);
+            $item->userImage = $user ? $user->profileimage : null; // Add the image or set null if the user is not found
+            return $item;
+        });
+
+        // Display the modified collection for debugging
+        // dd($pendingRequestsWithImageUri);
+
+        // Return the modified collection as a JSON response
         return response()->json([
-            'data' => $pendingRequests,
+            'data' => $pendingRequestsWithImageUri,
         ], Response::HTTP_OK);
     }
+
 
     /**
      * Show details of a specific validation request.
