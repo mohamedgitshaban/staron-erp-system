@@ -15,8 +15,8 @@ return new class extends Migration
             $table->id();
             $table->string("invoice_group_id");
             $table->date("date");
-            $table->unsignedBigInteger("debit_id");
-            $table->text("debit_account_description");
+            $table->unsignedBigInteger(column: "debit_id");
+            $table->text(column: "debit_account_description");
             $table->unsignedBigInteger("credit_id");
             $table->text("credit_account_description");
             $table->integer("value");

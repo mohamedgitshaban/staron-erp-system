@@ -9,7 +9,6 @@ class MainJournalValidation extends Model
 {
     use HasFactory;
     protected $fillable = [
-        'invoice_group_id',
         'date',
         'debit_id',
         'debit_account_description',
@@ -17,9 +16,8 @@ class MainJournalValidation extends Model
         'credit_account_description',
         'value',
         'description',
-        'invoice_id',
         'requested_by',
-        'status',
-        'rejection_reason'
+        // 'status',
+        // 'rejection_reason'
     ];
 }

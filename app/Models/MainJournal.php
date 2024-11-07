@@ -10,15 +10,11 @@ class MainJournal extends Model
 {
     use HasFactory;
     protected $fillable = [
-        'invoice_group_id',
         'date',
         'debit_id',
-        'debit_account_description',
         'credit_id',
-        'credit_account_description',
         'value',
         'description',
-        'invoice_id',
     ];
 
     /**
@@ -31,8 +27,8 @@ class MainJournal extends Model
         'value' => 'integer',
     ];
     protected $hidden=[
-"created_at",
-                    "updated_at"
+        "created_at",
+        "updated_at"
     ];
     /**
      * Get the debit account associated with the journal entry.

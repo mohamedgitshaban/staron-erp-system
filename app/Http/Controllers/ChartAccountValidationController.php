@@ -22,6 +22,7 @@ class ChartAccountValidationController extends Controller
         $pendingRequestsWithImageUri = $pendingRequests->map(function ($item) {
             $user = User::find($item->requested_by);
             $item->userImage = $user ? $user->profileimage : null; // Add the image or set null if the user is not found
+            $item->userName = $user ? $user->name : null;
             return $item;
         });
 
@@ -31,6 +32,7 @@ class ChartAccountValidationController extends Controller
         // Return the modified collection as a JSON response
         return response()->json([
             'data' => $pendingRequestsWithImageUri,
+            'status'=> Response::HTTP_OK
         ], Response::HTTP_OK);
     }
 
@@ -44,6 +46,7 @@ class ChartAccountValidationController extends Controller
 
         return response()->json([
             'data' => $request,
+            'status' => Response::HTTP_OK
         ], Response::HTTP_OK);
     }
 

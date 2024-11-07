@@ -444,7 +444,6 @@ Route::group(['prefix'=>'v1'],function(){
                 Route::get('/all', [ChartAccountController::class, 'all']); // Get all accounts
                 Route::get('/leafaccounts', [ChartAccountController::class, 'getLeafAccounts']); // Get accounts without children
                 Route::get('/totalparentbalance', [ChartAccountController::class, 'totalParentAccountsBalance']); // Total balance of parent accounts
-
                 Route::post('/findsiblingaccounts', [ChartAccountController::class, 'findSiblingAccounts']); // Find sibling accounts for a specific account
 
                 // Account management
@@ -466,13 +465,17 @@ Route::group(['prefix'=>'v1'],function(){
             Route::group(['prefix'=>'mainjournal',],function () {
                 Route::post('/trail', [MainJournalController::class, 'trail']);
                 Route::post('/lager', [MainJournalController::class, 'lager']);
+            });
 
-                Route::post('/validateJournalEntry', [MainJournalValidationController::class, 'validateEntry']);
-                Route::post('/approveJournalEntry', [MainJournalValidationController::class, 'approveEntry']);
-                Route::post('/rejectJournalEntry', [MainJournalValidationController::class, 'rejectEntry']);
+            Route::resource('mainjournal', MainJournalController::class);
+
+            Route::group(['prefix'=>'mainJournalValidation',],function () {
+                Route::get('/pending', [MainjournalValidationController::class, 'index']);
+                Route::get('/show/{id}', [MainjournalValidationController::class, 'show']);
+                Route::post('/store', [MainJournalValidationController::class, 'store']);
+                Route::post('/approve/{id}', [MainJournalValidationController::class, 'approve']);
 
             });
-            Route::resource('mainjournal', MainJournalController::class);
 
             Route::group(['prefix'=>'TresuryAccount',],function () {
                 Route::get('/depit', [TresuryAccountController::class, 'getallrequests']);

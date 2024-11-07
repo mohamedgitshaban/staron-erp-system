@@ -28,6 +28,7 @@ class ChartAccountController extends Controller
         ], 200);
     }
 
+
     public function store(Request $request)
     {
         // Validation
@@ -69,6 +70,19 @@ class ChartAccountController extends Controller
     /**
      * Generates account code based on parent account
      */
+
+    public function getAccountHierarchyName($accountId)
+    {
+        $account = ChartAccount::find($accountId);
+        if (!$account)
+            return null;
+
+        $hierarchy = [];
+        while ($account) {
+            $hierarchy[] = $account->name;
+            $account = $account->parent;  // Assuming each ChartAccount has a `parent` relationship
+        }
+    }
     private function generateAccountCode($parentId)
     {
         if ($parentId === null) {
@@ -98,7 +112,7 @@ class ChartAccountController extends Controller
     }
 
     public function approveValidationRequest($validationId)
-    {   
+    {
         $validationRequest = ChartAccountValidation::findOrFail($validationId);
 
         if ($validationRequest->status !== 'pending') {
@@ -196,9 +210,9 @@ class ChartAccountController extends Controller
     {
         $data = ChartAccount::find($id);
         if ($data->parent_id != null) {
-                    //  dd($data->parent_id);
+            //  dd($data->parent_id);
 
-            return $this->GetFullAccountName($data->parent_id) . "-" .$data->name ;
+            return $this->GetFullAccountName($data->parent_id) . "-" . $data->name;
         } else {
             return $data->name;
         }
@@ -208,7 +222,7 @@ class ChartAccountController extends Controller
         $data = ChartAccount::with('childrenRecursive')->find(130);
         if ($data != null) {
 
-                unset($account->brance);
+            unset($account->brance);
 
             return response()->json(["data" => $data, "status" => Response::HTTP_OK]);
         } else {
@@ -220,7 +234,7 @@ class ChartAccountController extends Controller
         $data = ChartAccount::with('childrenRecursive')->find($id);
         if ($data != null) {
 
-                unset($account->brance);
+            unset($account->brance);
 
             return response()->json(["data" => $data, "status" => Response::HTTP_OK]);
         } else {
@@ -275,9 +289,9 @@ class ChartAccountController extends Controller
                         $parent->brance = 1;
                         $child = ChartAccount::where('parent_id', $parentId)->latest()->first();
                         if ($child == null) {
-                            $code = (int)$parent->code .  1;
+                            $code = (int) $parent->code . 1;
                         } else {
-                            $code = (int)$child->code + 1;
+                            $code = (int) $child->code + 1;
                         }
                         // Increment the code based on the parent's code and count
 
@@ -318,21 +332,22 @@ class ChartAccountController extends Controller
     }
 
 
-    public function getLeafAccounts() {
+    public function getLeafAccounts()
+    {
         $data = ChartAccount::doesntHave('childrenRecursive')->get();
-        if($data->isEmpty()) {
+        if ($data->isEmpty()) {
             return response()->json([
                 "data" => "No Content",
                 "status" => Response::HTTP_NO_CONTENT
-            ],200);
+            ], 200);
         }
         return response()->json([
             "data" => $data,
-            "status"=> Response::HTTP_OK
-        ],200);
+            "status" => Response::HTTP_OK
+        ], 200);
     }
 
-   public function totalParentAccountsBalance()
+    public function totalParentAccountsBalance()
     {
         // Fetch all parent accounts (where parent_id is null)
         $accounts = DB::table('chart_accounts')->where('parent_id', null)->get();
@@ -370,8 +385,8 @@ class ChartAccountController extends Controller
 
         // Find sibling accounts with the same parent ID, excluding the original account itself
         $siblings = ChartAccount::where('parent_id', $originAccount->parent_id)
-                    ->where('id', '!=', $id)
-                    ->get();
+            ->where('id', '!=', $id)
+            ->get();
 
         if ($siblings->isEmpty()) {
             return response()->json([
