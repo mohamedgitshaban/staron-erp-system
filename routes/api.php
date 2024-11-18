@@ -407,6 +407,51 @@ Route::group(['prefix'=>'v1'],function(){
         });
         //finance
         Route::group(['prefix'=>'finance',],function () {
+            // Accounting hub
+            // Chart of Accounts Routes
+
+            Route::group(['prefix' => 'chart-account'], function () {
+                Route::get('/', [ChartAccountController::class, 'index']);
+                Route::post('/create', [ChartAccountController::class, 'store']);
+                Route::post('/update/{id}', [ChartAccountController::class, 'update'])->where('id', '[0-9]+');
+                Route::delete('/delete/{id}', [ChartAccountController::class, 'destroy'])->where('id', '[0-9]+');
+                Route::get('/show/{id}', [ChartAccountController::class, 'show'])->where('id', '[0-9]+');
+                Route::get('/full-name/{id}', [ChartAccountController::class, 'GetFullAccountName'])->where('id', '[0-9]+');
+                Route::get('/child' , [ChartAccountController::class,'child']);
+            });
+
+            // Chart of Accounts Validation Routes
+            Route::group(['prefix' => 'chart-account-validation'], function () {
+                Route::get('/pending', [ChartAccountValidationController::class, 'index']);
+                Route::get('/show/{id}', [ChartAccountValidationController::class, 'show'])->where('id', '[0-9]+');
+                Route::post('/store', [ChartAccountValidationController::class, 'store']);
+                Route::put('/approve/{id}', [ChartAccountValidationController::class, 'approve'])->where('id', '[0-9]+');
+                Route::post('/reject/{id}', [ChartAccountValidationController::class, 'reject'])->where('id', '[0-9]+');
+            });
+
+            // Main Journal Routes
+            Route::group(['prefix' => 'main-journal'], function () {
+                Route::get('/', [MainJournalController::class, 'index']); // Added index route here
+                Route::get('/show/{id}', [MainJournalController::class, 'show'])->where('id', '[0-9]+');
+                Route::post('/trial', [MainJournalController::class, 'trial']);
+                Route::post('/ledger', [MainJournalController::class, 'ledger']);
+                Route::post('/create', [MainJournalController::class, 'store']);
+                Route::post('/update/{id}', [MainJournalController::class, 'update'])->where('id', '[0-9]+');
+                Route::delete('/delete/{id}', [MainJournalController::class, 'destroy'])->where('id', '[0-9]+');
+            });
+
+            // Main Journal Validation Routes
+            Route::group(['prefix' => 'main-journal-validation'], function () {
+                Route::get('/pending', [MainJournalValidationController::class, 'index']);
+                Route::get('/show/{id}', [MainJournalValidationController::class, 'show'])->where('id', '[0-9]+');
+                Route::post('/store', [MainJournalValidationController::class, 'store']);
+                Route::put('/approve/{id}', [MainJournalValidationController::class, 'approve'])->where('id', '[0-9]+');
+                Route::post('/reject/{id}', [MainJournalValidationController::class, 'reject'])->where('id', '[0-9]+');
+
+            });
+
+
+            // reports
             Route::group(['prefix'=>'ReportSubmition',],function () {
                 Route::get('/', [FinanceReportSubmitionController::class,"index"]);
                 Route::post('/create', [FinanceReportSubmitionController::class,"store"]);
@@ -429,53 +474,10 @@ Route::group(['prefix'=>'v1'],function(){
                 Route::post('/{id}/AcceptRequestForMoney', [FainanceProcurmentController::class,"AcceptRequestForMoney"]);
             });
 
-            Route::group(['prefix' => "chartAccountValidation"], function () {
-                Route::post('/store', [ChartAccountValidationController::class, 'store']); // Submit account creation request
-                Route::post('/approve/{id}', [ChartAccountValidationController::class, 'approve']); // Approve a validation request
-                Route::post('/reject/{id}', [ChartAccountValidationController::class, 'reject']); // Reject a validation request
-                Route::get('/pending', [ChartAccountValidationController::class, 'index']); // List all pending requests
-                Route::get('/show/{id}', [ChartAccountValidationController::class, 'show']); // View a specific request
-            });
-
-            Route::group(['prefix' => 'chartAccount'], function () {
-                Route::get('/',[ChartAccountController::class, 'index']);
-                Route::get('/parent', [ChartAccountController::class, 'parent']); // Get parent accounts
-                Route::get('/child', [ChartAccountController::class, 'child']); // Get child accounts
-                Route::get('/all', [ChartAccountController::class, 'all']); // Get all accounts
-                Route::get('/leafaccounts', [ChartAccountController::class, 'getLeafAccounts']); // Get accounts without children
-                Route::get('/totalparentbalance', [ChartAccountController::class, 'totalParentAccountsBalance']); // Total balance of parent accounts
-                Route::post('/findsiblingaccounts', [ChartAccountController::class, 'findSiblingAccounts']); // Find sibling accounts for a specific account
-
-                // Account management
-                Route::post('/create', [ChartAccountController::class, 'store']); // Directly create an account in ChartAccount (if validation bypassed)
-                Route::post('/update/{id}', [ChartAccountController::class, 'update']); // Update an account's details
-                Route::delete('/delete/{id}', [ChartAccountController::class, 'destroy']); // Delete an account
-
-                // Route for getting specific account details
-                Route::get('/show/{id}', [ChartAccountController::class, 'show']); // Get account details with nested children
-                Route::get('/fullname/{id}', [ChartAccountController::class, 'GetFullAccountName']); // Get full name/path for an account
-            });
-
             // this is no use currently
             // Route::resource('chartAccount', ChartAccountController::class);
             Route::resource('banks', BankController::class);
 
-
-
-            Route::group(['prefix'=>'mainjournal',],function () {
-                Route::post('/trail', [MainJournalController::class, 'trail']);
-                Route::post('/lager', [MainJournalController::class, 'lager']);
-            });
-
-            Route::resource('mainjournal', MainJournalController::class);
-
-            Route::group(['prefix'=>'mainJournalValidation',],function () {
-                Route::get('/pending', [MainjournalValidationController::class, 'index']);
-                Route::get('/show/{id}', [MainjournalValidationController::class, 'show']);
-                Route::post('/store', [MainJournalValidationController::class, 'store']);
-                Route::post('/approve/{id}', [MainJournalValidationController::class, 'approve']);
-
-            });
 
             Route::group(['prefix'=>'TresuryAccount',],function () {
                 Route::get('/depit', [TresuryAccountController::class, 'getallrequests']);

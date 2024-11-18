@@ -3,21 +3,61 @@
 namespace App\Http\Controllers\Finance;
 
 use App\Http\Controllers\Controller;
-use App\Models\ChartAccount;
 use App\Models\MainJournal;
+use App\Models\ChartAccount;
+use App\Models\MainJournalValidation;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Validator;
 
 class MainJournalController extends Controller
 {
-    private $ChartAccountController;
-
-    public function __construct(ChartAccountController $ChartAccountController)
-    {
-        $this->ChartAccountController = $ChartAccountController;
+    protected $ChartOfAccounts;
+    public function __construct() {
+        $this->ChartOfAccounts = new ChartAccount();
     }
+
+    public function index(Request $request)
+    {
+        $perPage = $request->get('per_page', 10);
+
+        $mainJournalEntries = MainJournal::with(['debitAccount', 'creditAccount'])
+            ->orderBy('date', 'desc')
+            ->paginate($perPage);
+
+        $data = $mainJournalEntries->map(function ($entry) {
+            // Safely fetch the names of the debit and credit accounts
+            $debitAccountName = optional(ChartAccount::find($entry->debit_id))->name ?? 'Unknown Account';
+            $creditAccountName = optional(ChartAccount::find($entry->credit_id))->name ?? 'Unknown Account';
+
+        return [
+            'id' => $entry->id,
+            'date' => Carbon::parse($entry->date)->format('Y-m-d'),
+            'debit_account' => $entry->debitAccount->name ?? 'Unknown Account',
+            'credit_account' => $entry->creditAccount->name ?? 'Unknown Account',
+            'debit_id' => $entry->debit_id,
+            'debit_account_name' => $debitAccountName,
+            'credit_id' => $entry->credit_id,
+            'credit_account_name' => $creditAccountName,
+            'value' => $entry->value,
+            'description' => $entry->description,
+        ];
+    });
+
+    return response()->json([
+        'data' => $data,
+        'status' => Response::HTTP_OK,
+        'pagination' => [
+            'current_page' => $mainJournalEntries->currentPage(),
+            'per_page' => $mainJournalEntries->perPage(),
+            'total' => $mainJournalEntries->total(),
+        ],
+    ]);
+}
+
 
     public function ledger(Request $request)
     {
@@ -27,29 +67,24 @@ class MainJournalController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(["error" => $validator->errors(), "status" => Response::HTTP_UNPROCESSABLE_ENTITY], 200);
+            return response()->json(['error' => $validator->errors()], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         $validated = $validator->validated();
         $generalData = [];
 
-        foreach ($validated["accounts"] as $account) {
+        foreach ($validated['accounts'] as $account) {
             $id = $account['id'];
-            $entries = MainJournal::where("credit_id", $id)
-                ->orWhere("debit_id", $id)
-                ->orderBy("date")
+            $entries = MainJournal::where('credit_id', $id)
+                ->orWhere('debit_id', $id)
+                ->orderBy('date')
                 ->get();
-
-            $date = $this->ChartAccountController->getDate($id);
-            if (!$date) {
-                return response()->json(["data" => "The record must not be a parent of another element", "status" => Response::HTTP_METHOD_NOT_ALLOWED], 200);
-            }
 
             $balance = 0;
             $accountGeneral = [
                 [
-                    'date' => Carbon::parse($date)->format('Y-m-d'),
-                    'description' => "Balance forward",
+                    'date' => now()->format('Y-m-d'),
+                    'description' => 'Balance forward',
                     'debit' => 0,
                     'credit' => 0,
                     'balance' => $balance,
@@ -57,15 +92,9 @@ class MainJournalController extends Controller
             ];
 
             $accountGeneral = array_merge($accountGeneral, $entries->map(function ($entry) use ($id, &$balance) {
-                if ($entry->debit_id == $id) {
-                    $debit = $entry->value;
-                    $credit = 0;
-                    $balance -= $entry->value;
-                } else {
-                    $debit = 0;
-                    $credit = $entry->value;
-                    $balance += $entry->value;
-                }
+                $debit = $entry->debit_id == $id ? $entry->value : 0;
+                $credit = $entry->credit_id == $id ? $entry->value : 0;
+                $balance += ($credit - $debit);
 
                 return [
                     'date' => Carbon::parse($entry->date)->format('Y-m-d'),
@@ -76,14 +105,14 @@ class MainJournalController extends Controller
                 ];
             })->toArray());
 
-            $accountName = $this->ChartAccountController->showName($id);
+            $accountName = $this->getAccountName($id);
             $generalData[] = [
-                "account_name" => $accountName[0]->name,
-                "general_ledger" => $accountGeneral
+                'account_name' => $accountName,
+                'general_ledger' => $accountGeneral,
             ];
         }
 
-        return response()->json(["all_ledger" => $generalData, "status" => Response::HTTP_OK], 200);
+        return response()->json(['all_ledger' => $generalData], Response::HTTP_OK);
     }
 
     public function trial(Request $request)
@@ -94,176 +123,65 @@ class MainJournalController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(["error" => $validator->errors(), "status" => Response::HTTP_UNPROCESSABLE_ENTITY], 200);
+            return response()->json(['error' => $validator->errors()], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         $validated = $validator->validated();
         $trialBalance = [];
 
-        foreach ($validated["accounts"] as $account) {
+        foreach ($validated['accounts'] as $account) {
             $id = $account['id'];
-            $credit = MainJournal::where('credit_id', $id)
-                ->whereIn('debit_id', $validated["accounts"])
-                ->sum("value");
-            $debit = MainJournal::where('debit_id', $id)
-                ->whereIn('credit_id', $validated["accounts"])
-                ->sum("value");
+            $entries = MainJournal::where('debit_id', $id)
+                ->orWhere('credit_id', $id)
+                ->selectRaw('SUM(CASE WHEN debit_id = ? THEN value ELSE 0 END) as debit, SUM(CASE WHEN credit_id = ? THEN value ELSE 0 END) as credit', [$id, $id])
+                ->first();
 
-            $accountName = $this->ChartAccountController->showName($id);
+            $accountName = $this->getAccountName($id);
             $trialBalance[] = [
-                "account_name" => $accountName[0]->name,
-                "debit" => $debit,
-                "credit" => $credit
+                'account_name' => $accountName,
+                'debit' => $entries->debit ?? 0,
+                'credit' => $entries->credit ?? 0,
             ];
         }
 
-        return response()->json(["trial_balance" => $trialBalance, "status" => Response::HTTP_OK], 200);
+        return response()->json(['trial_balance' => $trialBalance], Response::HTTP_OK);
     }
 
-    public function getAccountHierarchyName($accountId)
+    public function storeApprovedTransaction($transaction)
     {
-        $account = ChartAccount::find($accountId);
-        if (!$account) return null;
+        DB::transaction(function () use ($transaction) {
+            $debitAccount = ChartAccount::lockForUpdate()->find($transaction->debit_id);
+            $creditAccount = ChartAccount::lockForUpdate()->find($transaction->credit_id);
 
-        $hierarchy = [];
-        while ($account) {
-            $hierarchy[] = $account->name;
-            $account = $account->parent;  // Assuming each ChartAccount has a `parent` relationship
-        }
+            if (!$debitAccount || !$creditAccount) {
+                throw new \Exception('One or both accounts do not exist.');
+            }
+
+            MainJournal::create([
+                'date' => $transaction->date,
+                'debit_id' => $debitAccount->id,
+                'credit_id' => $creditAccount->id,
+                'value' => $transaction->value,
+                'description' => $transaction->description,
+            ]);
+
+            $this->updateBalances($debitAccount, $creditAccount, $transaction->value);
+        });
+
+        return response()->json(['message' => 'Transaction approved and recorded successfully'], Response::HTTP_CREATED);
     }
 
-    public function index()
-{
-    $data = MainJournal::orderBy("date")->get()->groupBy("date");
-
-    if ($data->isEmpty()) {
-        return response()->json(["data" => "No Data", "status" => Response::HTTP_NO_CONTENT], 200);
-    }
-
-    $transformedData = $data->map(function ($items, $date) {
-        return [
-            'date' => $date,
-            'data' => $items->map(function ($item) {
-                $debitHierarchy = $this->ChartAccountController->getAccountHierarchyName($item->debit_id);
-                $creditHierarchy = $this->ChartAccountController->getAccountHierarchyName($item->credit_id);
-
-                return [
-                    'id' => $item->id,
-                    'date' => $item->date,
-                    'debit_id' => $item->debit_id,
-                    'debit_account_description' => $debitHierarchy,
-                    'credit_id' => $item->credit_id,
-                    'credit_account_description' => $creditHierarchy,
-                    'value' => $item->value,
-                    'description' => $item->description,
-                ];
-            })->toArray(),
-        ];
-    })->values();
-
-    return response()->json(["data" => $transformedData, "status" => Response::HTTP_OK], 200);
-}
-
-
-
-    public function store(Request $request)
+    private function updateBalances($debitAccount, $creditAccount, $value)
     {
-        $validator = Validator::make($request->all(), [
-            'debit_id' => 'required|integer|exists:chart_accounts,id',
-            'credit_id' => 'required|integer|exists:chart_accounts,id',
-            'value' => 'required|integer|min:0',
-            'description' => 'nullable|string|max:1000',
-        ]);
+        $debitAccount->balance += in_array($debitAccount->type, ['asset', 'expense']) ? $value : -$value;
+        $debitAccount->save();
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors(), "status" => Response::HTTP_UNPROCESSABLE_ENTITY], 200);
-        }
-
-        $validated = $validator->validated();
-        $validated["date"] = Carbon::now();
-
-        // Generate description based on account type or transaction type
-        $transactionDescriptions = [
-            'bank' => "Outgoing money from bank to ",
-            'purchase' => "Payment made for purchase ",
-            'sale' => "Income from sale transaction ",
-            'expense' => "Expense recorded for "
-        ];
-
-        $accountType = $this->ChartAccountController->getAccountType($validated['debit_id']); // Assume this function exists
-        $validated['description'] = $transactionDescriptions[$accountType] ?? "Transaction processed"; // Assign description based on type
-
-        MainJournal::create($validated);
-
-        // Update account balances
-        $this->ChartAccountController->GetMainJournalIncrease($validated["credit_id"], $validated["value"]);
-        $this->ChartAccountController->GetMainJournalDecrease($validated["debit_id"], $validated["value"]);
-
-        return response()->json(['message' => 'Data created successfully', "status" => Response::HTTP_CREATED]);
+        $creditAccount->balance += in_array($creditAccount->type, ['liability', 'equity', 'income']) ? $value : -$value;
+        $creditAccount->save();
     }
 
-    public function show($id)
+    private function getAccountName($id)
     {
-        $data = MainJournal::with('debitAccount', 'creditAccount')->find($id);
-        if ($data) {
-            unset($data->created_at, $data->updated_at);
-            return response()->json(["data" => $data, "status" => Response::HTTP_OK]);
-        }
-
-        return response()->json(["data" => "No data found", "status" => Response::HTTP_NOT_FOUND]);
-    }
-
-    public function bankProfile($id)
-    {
-        return MainJournal::where("credit_id", $id)
-            ->orWhere("debit_id", $id)
-            ->orderBy("date")
-            ->get();
-    }
-
-    public function update(Request $request, $id)
-    {
-        $validator = Validator::make($request->all(), [
-            'debit_id' => 'required|integer|exists:chart_accounts,id',
-            'credit_id' => 'required|integer|exists:chart_accounts,id',
-            'value' => 'required|integer|min:0',
-            'description' => 'nullable|string|max:1000',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors(), "status" => Response::HTTP_UNPROCESSABLE_ENTITY], 200);
-        }
-
-        $data = MainJournal::find($id);
-        if ($data) {
-            $validated = $validator->validated();
-            $validated["date"] = Carbon::now();
-
-            $accountType = $this->ChartAccountController->getAccountType($validated['debit_id']);
-            $validated['description'] = $transactionDescriptions[$accountType] ?? "Transaction processed";
-
-            $data->update($validated);
-
-            $this->ChartAccountController->GetMainJournalIncrease($validated["credit_id"], $validated["value"]);
-            $this->ChartAccountController->GetMainJournalDecrease($validated["debit_id"], $validated["value"]);
-
-            return response()->json(['message' => 'Data updated successfully', "status" => Response::HTTP_OK]);
-        }
-
-        return response()->json(['message' => 'Data not found', "status" => Response::HTTP_NOT_FOUND]);
-    }
-
-    public function destroy($id)
-    {
-        $data = MainJournal::find($id);
-        if ($data) {
-            $this->ChartAccountController->GetMainJournalIncrease($data->debit_id, $data->value);
-            $this->ChartAccountController->GetMainJournalDecrease($data->credit_id, $data->value);
-            $data->delete();
-
-            return response()->json(['message' => 'Data deleted successfully', "status" => Response::HTTP_OK]);
-        }
-
-        return response()->json(['message' => 'Data not found', "status" => Response::HTTP_NOT_FOUND]);
+        return ChartAccount::find($id)->name ?? 'Unknown Account';
     }
 }

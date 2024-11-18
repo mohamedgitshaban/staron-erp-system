@@ -4,263 +4,246 @@ namespace App\Http\Controllers;
 
 use App\Models\ChartAccount;
 use App\Models\ChartAccountValidation;
-use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\Response;
+use App\Http\Controllers\Finance\ChartAccountController;
 
 class ChartAccountValidationController extends Controller
 {
-    /**
-     * List all pending validation requests.
-     */
+    protected $chartAccountController;
+
+    public function __construct(ChartAccountController $chartAccountController)
+    {
+        $this->chartAccountController = $chartAccountController;
+    }
+
+    // List all validation requests
     public function index()
     {
-        $pendingRequests = ChartAccountValidation::where('status', 'pending')->get();
+        $validationRequests = ChartAccountValidation::with('user')->orderBy('created_at', 'desc')->get();
 
-        // Use the `map()` method to modify the collection directly
-        $pendingRequestsWithImageUri = $pendingRequests->map(function ($item) {
-            $user = User::find($item->requested_by);
-            $item->userImage = $user ? $user->profileimage : null; // Add the image or set null if the user is not found
-            $item->userName = $user ? $user->name : null;
-            return $item;
+        $requestsWithDetails = $validationRequests->map(function ($item) {
+            $userName = $item->user->name ?? 'Unknown User';
+            $userImage = $item->user->profileimage ?? null;
+            $hierarchy = $this->decodeHierarchy($item);
+            $parentAccountName = optional(ChartAccount::find($item->parent_id))->name ?? 'Root';
+
+            return [
+                'id' => $item->id,
+                'date' => $item->created_at->format('Y-m-d'),
+                'name' => $item->name,
+                'request_source' => $item->request_source,
+                'requested_by' => $item->requested_by,
+                'userName' => $userName,
+                'userImage' => $userImage,
+                'parent_id' => $item->parent_id,
+                'parent_name' => $parentAccountName,
+                'hierarchy' => $hierarchy,
+                'status' => $item->status,
+            ];
         });
 
-        // Display the modified collection for debugging
-        // dd($pendingRequestsWithImageUri);
-
-        // Return the modified collection as a JSON response
         return response()->json([
-            'data' => $pendingRequestsWithImageUri,
-            'status'=> Response::HTTP_OK
+            'data' => $requestsWithDetails,
+            'status' => Response::HTTP_OK,
         ], Response::HTTP_OK);
     }
 
-
-    /**
-     * Show details of a specific validation request.
-     */
-    public function show($id)
-    {
-        $request = ChartAccountValidation::findOrFail($id);
-
-        return response()->json([
-            'data' => $request,
-            'status' => Response::HTTP_OK
-        ], Response::HTTP_OK);
-    }
-
-    /**
-     * Store a new account validation request.
-     */
     public function store(Request $request)
-{
-    $validated = $request->validate([
-        'request_source' => 'required|string|max:255',
-        'hierarchy' => 'required|array|min:1', // Ensure hierarchy is a non-empty array
-    ]);
-
-    $validated['requested_by'] = Auth::id();
-    $validated['parent_id'] = $this->determineParentId($validated['requested_by'], $validated['request_source']);
-
-    if (is_null($validated['parent_id'])) {
-        return response()->json([
-            'message' => 'Unable to determine parent account. Please ensure the department and request source are configured correctly.',
-        ], Response::HTTP_BAD_REQUEST);
-    }
-
-    // Extract the last item in the hierarchy as the name
-    $name = array_pop($validated['hierarchy']);
-
-    // Debugging output to check JSON encoding
-    $encodedHierarchy = json_encode($validated['hierarchy']);
-    // dd($encodedHielrarchy); // Check if this outputs valid JSON
-
-    $validationRequest = ChartAccountValidation::create([
-        'name' => $name,
-        'request_source' => $validated['request_source'],
-        'requested_by' => $validated['requested_by'],
-        'parent_id' => $validated['parent_id'],
-        'hierarchy' => $encodedHierarchy, // Properly encode the hierarchy as JSON
-        'status' => 'pending',
-    ]);
-
-    return response()->json([
-        'message' => 'Account creation request submitted successfully.',
-        'data' => $validationRequest,
-    ], Response::HTTP_CREATED);
-}
-
-
-    /**
-     * Determine the parent ID based on user department and request source.
-     */
-    private function determineParentId($requestedBy, $requestSource)
     {
-        $user = User::findOrFail($requestedBy);
-        $department = $user->department;
+        $validated = $request->validate([
+            'request_source' => 'required|string|max:255',
+            'hierarchy' => 'required|array|min:1',
+            'originating_module' => 'required|string|max:255',
+        ]);
 
-        $parentMap = [
-            'Supply Chain' => [
-                'source' => 'Supply Chain Component',
-                'parent_id' => 71,
-            ],
-            'Finance' => [
-                'source' => 'Finance Component',
-                'parent_id' => 70,
-            ],
-            'Human Resource' => [
-                'source' => 'Human Resource',
-                'parent_id' => 70,
-            ],
-        ];
+        $validated['requested_by'] = $request->user()->id;
+        $validated['parent_id'] = $this->locateParent($validated['hierarchy']);
 
-        $parentId = $parentMap[$department]['parent_id'] ?? null;
-
-        return $parentId ?? ChartAccount::where('name', 'General Ledger')->value('id');
-    }
-
-    /**
-     * Approve a validation request and create the account with the full hierarchy.
-     */
-    public function approve($id)
-    {
-        $validationRequest = ChartAccountValidation::findOrFail($id);
-
-        if ($validationRequest->status !== 'pending') {
+        if (is_null($validated['parent_id'])) {
             return response()->json([
-                'message' => 'Request has already been processed.',
-            ], Response::HTTP_CONFLICT);
-        }
-
-        // Decode and validate the hierarchy
-        $hierarchy = $this->decodeHierarchy($validationRequest);
-        if (is_null($hierarchy)) {
-            return response()->json([
-                'message' => 'Invalid hierarchy data.',
+                'message' => 'Unable to determine parent account.',
+                'status' => Response::HTTP_BAD_REQUEST,
             ], Response::HTTP_BAD_REQUEST);
         }
 
-        // Process each level in the hierarchy
-        $parentId = $validationRequest->parent_id;
-        foreach ($hierarchy as $levelName) {
-            $parentId = $this->findOrCreateAccount($levelName, $parentId);
+        $name = $this->generateAccountName($validated['originating_module'], array_pop($validated['hierarchy']));
+        $encodedHierarchy = json_encode($validated['hierarchy']);
+        $accountLineage = implode('.', $validated['hierarchy']) . '.' . $name;
+
+        try {
+            DB::beginTransaction();
+
+            $validationRequest = ChartAccountValidation::create([
+                'name' => $name,
+                'request_source' => $validated['request_source'],
+                'requested_by' => $validated['requested_by'],
+                'parent_id' => $validated['parent_id'],
+                'hierarchy' => $encodedHierarchy,
+                'lineage' => $accountLineage,
+                'status' => 'pending',
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Validation request submitted successfully.',
+                'data' => $validationRequest,
+                'status' => Response::HTTP_CREATED,
+            ], Response::HTTP_CREATED);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error storing validation request: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Failed to submit validation request. Please try again later.',
+                'status' => Response::HTTP_INTERNAL_SERVER_ERROR,
+                'error' => $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
-
-        // Create the final account
-        $finalAccount = ChartAccount::create([
-            'name' => $validationRequest->name,
-            'parent_id' => $parentId,
-            'code' => $this->generateAccountCode($parentId),
-            'account_lineage' => $this->generateAccountLineage($parentId, $validationRequest->name),
-            'debit' => 0,
-            'credit' => 0,
-            'balance' => 0,
-            'branch' => false,
-        ]);
-
-        // Mark as approved
-        $validationRequest->update(['status' => 'approved']);
-
-        return response()->json([
-            'message' => 'Account created successfully along with any missing parent accounts.',
-            'account' => $finalAccount,
-        ], Response::HTTP_OK);
     }
 
-    /**
-     * Decode hierarchy JSON and handle errors.
-     */
-    private function decodeHierarchy($validationRequest)
+    public function approve($id)
     {
-        $hierarchy = json_decode($validationRequest->hierarchy, true);
-        return is_array($hierarchy) ? $hierarchy : null;
-    }
-
-    /**
-     * Helper method to find or create an account level in the hierarchy.
-     */
-    private function findOrCreateAccount($name, $parentId = null)
-    {
-        $existingAccount = ChartAccount::where('name', $name)
-                                       ->where('parent_id', $parentId)
-                                       ->first();
-
-        if ($existingAccount) {
-            return $existingAccount->id;
-        }
-
-        $newAccount = ChartAccount::create([
-            'name' => $name,
-            'parent_id' => $parentId,
-            'code' => $this->generateAccountCode($parentId),
-            'account_lineage' => $this->generateAccountLineage($parentId, $name),
-            'debit' => 0,
-            'credit' => 0,
-            'balance' => 0,
-            'branch' => true,
-        ]);
-
-        return $newAccount->id;
-    }
-
-    /**
-     * Reject a validation request with a reason.
-     */
-    public function reject(Request $request, $id)
-    {
-        $validated = $request->validate([
-            'rejection_reason' => 'required|string|max:1000',
-        ]);
-
-        $validationRequest = ChartAccountValidation::findOrFail($id);
+        $validationRequest = ChartAccountValidation::lockForUpdate()->findOrFail($id);
 
         if ($validationRequest->status !== 'pending') {
             return response()->json([
                 'message' => 'Request has already been processed.',
+                'status' => Response::HTTP_CONFLICT,
             ], Response::HTTP_CONFLICT);
         }
 
-        $validationRequest->update([
-            'status' => 'rejected',
-            'rejection_reason' => $validated['rejection_reason'],
-        ]);
+        try {
+            DB::beginTransaction();
 
-        return response()->json([
-            'message' => 'Account creation request rejected successfully.',
-        ], Response::HTTP_OK);
+            $hierarchy = $this->decodeHierarchy($validationRequest);
+            $parentId = $this->locateParent($hierarchy);
+
+            if (is_null($parentId)) {
+                throw new \Exception('Unable to locate or create parent account.');
+            }
+
+            $code = $this->chartAccountController->generateAccountCode($parentId);
+            $lineage = implode('.', $hierarchy) . '.' . $validationRequest->name;
+
+            // Create the new account
+            $finalAccount = $this->chartAccountController->createAccount([
+                'name' => $validationRequest->name,
+                'parent_id' => $parentId,
+                'code' => $code,
+                'lineage' => $lineage,
+            ]);
+
+            // Update the status of the validation request
+            $validationRequest->update(['status' => 'approved']);
+
+            // Update the related MainJournalValidation entry
+            $mainJournalValidation = \App\Models\MainJournalValidation::where('debit_validation_id', $validationRequest->id)
+                ->orWhere('credit_validation_id', $validationRequest->id)
+                ->lockForUpdate()
+                ->first();
+
+            if ($mainJournalValidation) {
+                $mainJournalValidation->status = 'approved';
+                $mainJournalValidation->debit_id = $mainJournalValidation->debit_id ?? $finalAccount->id;
+                $mainJournalValidation->credit_id = $mainJournalValidation->credit_id ?? $finalAccount->id;
+                $mainJournalValidation->save();
+
+                // Automatically post the journal entry
+                $this->postJournalEntry($mainJournalValidation);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Account created successfully and journal entry posted.',
+                'account' => $finalAccount,
+                'status' => Response::HTTP_OK,
+            ], Response::HTTP_OK);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error approving request: ' . $e->getMessage());
+
+            return response()->json([
+                'message' => 'Failed to approve request. Please try again later.',
+                'status' => Response::HTTP_INTERNAL_SERVER_ERROR,
+                'error' => $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
-    /**
-     * Generate the account code based on parent account.
-     */
-    private function generateAccountCode($parentId)
+
+    private function postJournalEntry($mainJournalValidation)
     {
-        if ($parentId === null) {
-            throw new \Exception("Parent ID is required to generate the account code.");
+    try {
+        DB::beginTransaction();
+
+        $debitAccount = ChartAccount::lockForUpdate()->find($mainJournalValidation->debit_id);
+        $creditAccount = ChartAccount::lockForUpdate()->find($mainJournalValidation->credit_id);
+
+        if (!$debitAccount || !$creditAccount) {
+            throw new \Exception('Debit or credit account not found.');
         }
 
-        $parentAccount = ChartAccount::findOrFail($parentId);
-        $parentCode = $parentAccount->code;
-        $childAccounts = ChartAccount::where('parent_id', $parentId)->pluck('code');
+        // Create the journal entry
+        \App\Models\MainJournal::create([
+            'date' => $mainJournalValidation->date,
+            'debit_id' => $debitAccount->id,
+            'credit_id' => $creditAccount->id,
+            'value' => $mainJournalValidation->value,
+            'description' => $mainJournalValidation->description,
+        ]);
 
-        $lastSegments = $childAccounts->map(function ($code) {
-            $segments = explode('.', $code);
-            return (int) end($segments);
-        });
+        // Update account balances
+        $this->updateAccountBalances($debitAccount, $creditAccount, $mainJournalValidation->value);
 
-        $newSegment = $lastSegments->isEmpty() ? 1 : $lastSegments->max() + 1;
-        return $parentCode . '.' . $newSegment;
+        DB::commit();
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Failed to post journal entry: ' . $e->getMessage());
+        throw new \Exception('Failed to post journal entry.');
+    }
     }
 
-    /**
-     * Generate the account lineage based on parent account and name.
-     */
-    private function generateAccountLineage($parentId, $name)
+    public function updateAccountBalances($debitAccount, $creditAccount, $value)
     {
-        $parentAccount = ChartAccount::findOrFail($parentId);
-        $parentLineage = $parentAccount->account_lineage;
+        // Update debit account balance
+        $debitAccount->balance += $value;
+        $debitAccount->save();
 
-        return $parentLineage . '.' . $name;
+        // Update credit account balance
+        $creditAccount->balance -= $value;
+        $creditAccount->save();
+    }
+
+
+    private function decodeHierarchy($validationRequest)
+    {
+        return json_decode($validationRequest->hierarchy, true) ?? [];
+    }
+
+    private function locateParent(array $hierarchy)
+    {
+        $parentId = null;
+
+        foreach ($hierarchy as $levelName) {
+            $existingAccount = ChartAccount::where('name', $levelName)->where('parent_id', $parentId)->first();
+
+            if ($existingAccount) {
+                $parentId = $existingAccount->id;
+            } else {
+                $newAccount = $this->chartAccountController->createAccount([
+                    'name' => $levelName,
+                    'parent_id' => $parentId,
+                ]);
+
+                $parentId = $newAccount->id;
+            }
+        }
+
+        return $parentId;
     }
 }

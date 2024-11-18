@@ -11,13 +11,32 @@ class MainJournalValidation extends Model
     protected $fillable = [
         'date',
         'debit_id',
-        'debit_account_description',
         'credit_id',
-        'credit_account_description',
         'value',
         'description',
         'requested_by',
-        // 'status',
-        // 'rejection_reason'
+        'status',
+        'ticket_trail',
+        'originating_module',
+        'rejection_reason',
+        'transaction_type', // New field
+        'debit_validation_id',
+        'credit_validation_id',
+        'request_source'
     ];
+    public function debitAccount()
+    {
+        return $this->belongsTo(ChartAccount::class, 'debit_id');
+    }
+
+    public function creditAccount()
+    {
+        return $this->belongsTo(ChartAccount::class, 'credit_id');
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'requested_by');
+    }
+
 }

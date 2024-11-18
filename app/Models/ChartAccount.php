@@ -14,6 +14,40 @@ class ChartAccount extends Model
     protected $casts=[
         // "created_at"=>"datetime:Y-m-d"
     ];
+
+    /**
+     * Get the root parent type of the account (e.g., asset, liability, equity).
+     */
+    /**
+     * Summary of getRootParentType
+     * @return string
+     */
+    public function getRootParentType()
+    {
+        $currentAccount = $this;
+
+        // Traverse up the hierarchy to find the root parent
+        while ($currentAccount->parent_id !== null) {
+            $currentAccount = $currentAccount->parent;
+        }
+
+        // Determine the type based on the root parent's name
+        switch (strtolower($currentAccount->name)) {
+            case 'assets':
+                return 'asset';
+            case 'liabilities':
+                return 'liability';
+            case 'equity':
+                return 'equity';
+            case 'revenue':
+                return 'revenue';
+            case 'expenses':
+                return 'expense';
+            default:
+                return 'unknown';
+        }
+    }
+
     public function parent()
     {
         return $this->belongsTo(ChartAccount::class, 'parent_id');

@@ -14,6 +14,7 @@ class MainJournal extends Model
         'debit_id',
         'credit_id',
         'value',
+        'transaction_type',
         'description',
     ];
 

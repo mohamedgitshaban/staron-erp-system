@@ -19,8 +19,9 @@ class ChartAccountValidation extends Model
     ];
 
     // return the requester
-    public function requestedBy () {
-        return $this->belongsTo(User::class,'requested_by');
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'requested_by', 'id');
     }
 
     // return it's parent account
